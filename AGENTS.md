@@ -2,7 +2,7 @@
 
 - Read README.md and relevant documentation in docs/ before proposing or making changes.
 - Respect the requested scope and distinguish confirmed requirements, proposals, and assumptions. Do not treat pending assumptions as approved decisions.
-- The current phase is architecture and design documentation. Do not implement features or select technologies without a task authorizing progression to that phase.
+- The current phase is Assignment 04–05 verification and delivery preparation. Do not implement features or select technologies without a task authorizing progression to that phase.
 - Present a brief plan before significant changes. Limit changes to the task and preserve existing work.
 - Request approval before destructive or sensitive actions that have not already been authorized. Do not publish or deploy on your own initiative.
 - Do not expose credentials, tokens, real personal data, or confidential information. Use fictional examples in documentation.
@@ -11,3 +11,9 @@
 - Communicate assumptions, changes, checks actually performed, and outstanding issues. Never invent approvals, executed tests, or results.
 
 - Present each proposed commit message to the user and wait for explicit approval before creating or amending a commit. Ask the user to decide material product and architecture questions; distinguish draft technical proposals from approved decisions.
+
+## Local commands
+
+- Windows: use the Maven Wrapper with .\mvnw.cmd verify and a dedicated PostgreSQL test database.
+- Browser tests: install Chromium for Playwright and set MATRIZ_E2E=true as explained in README.md.
+- Start the development stack with docker compose up -d --build --wait.

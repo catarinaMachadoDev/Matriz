@@ -1,10 +1,9 @@
-# OpenAPI 3.1; JSON syntax is valid YAML 1.2.
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Matriz task API",
+    "title": "Matriz API",
     "version": "0.1.0",
-    "description": "Design contract only. Two operations from the approved MVP. Technology-neutral; no implementation or deployed server. Session cookie name and CSRF header are proposed technical conventions."
+    "description": "Same-origin JSON API with server-managed sessions. Protected resources require project membership. Writes require the session CSRF token."
   },
   "security": [
     {
@@ -12,33 +11,37 @@
     }
   ],
   "paths": {
-    "/projects/{projectId}/tasks": {
-      "parameters": [
-        {
-          "name": "projectId",
-          "in": "path",
-          "required": true,
-          "schema": {
-            "type": "string",
-            "minLength": 1
-          },
-          "description": "Opaque project identifier."
+    "/api/auth/csrf": {
+      "get": {
+        "operationId": "csrf",
+        "description": "Fetch before sign-in and fetch a new token after sign-in.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Csrf"
+                }
+              }
+            }
+          }
         }
-      ],
+      }
+    },
+    "/api/auth/login": {
       "post": {
-        "operationId": "createProjectTask",
-        "summary": "Create a task in an accessible project",
-        "description": "Any authenticated project member may create a task. Trim title and description, reject blank values, and validate limits after trimming. New tasks are todo and unassigned. Verify project access before returning field errors. A confirmed transaction precedes 201. Idempotency and uncertain network retry behavior remain unresolved.",
+        "operationId": "login",
+        "security": [],
         "parameters": [
           {
-            "name": "X-CSRF-Token",
             "in": "header",
+            "name": "X-CSRF-Token",
             "required": true,
             "schema": {
-              "type": "string",
-              "minLength": 1
-            },
-            "description": "Token bound to the server session; delivery mechanism pending."
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -46,86 +49,119 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateTask"
-              },
-              "example": {
-                "title": "Review project scope",
-                "description": "Review the approved MVP and record remaining questions."
+                "$ref": "#/components/schemas/Login"
               }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": "Task created and persisted; initial status todo and assigneeId null.",
+          "200": {
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Task"
+                  "$ref": "#/components/schemas/User"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid input or query parameters.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/R400"
           },
           "401": {
-            "description": "Missing, expired, or invalid session.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Project not found or inaccessible; identical generic response.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Unexpected error; no internal details exposed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/R401"
           },
           "403": {
-            "description": "Missing or invalid CSRF token.",
+            "$ref": "#/components/responses/R403"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/User"
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
           }
         }
-      },
-      "get": {
-        "operationId": "listProjectTasks",
-        "summary": "List tasks in an accessible project",
-        "description": "Any authenticated project member may list tasks. Draft ordering: ascending opaque ID, compared consistently by the implementation. Total counts all project tasks, not just this page. Offset pagination is not a stable snapshot under concurrent changes.",
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logout",
         "parameters": [
           {
-            "name": "limit",
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "parameters": [
+          {
             "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
             "schema": {
               "type": "integer",
               "minimum": 1,
@@ -134,8 +170,8 @@
             }
           },
           {
-            "name": "offset",
             "in": "query",
+            "name": "offset",
             "schema": {
               "type": "integer",
               "minimum": 0,
@@ -145,7 +181,432 @@
         ],
         "responses": {
           "200": {
-            "description": "Task page; items may be empty. Offset beyond the end returns an empty page with the actual total.",
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProject",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}": {
+      "get": {
+        "operationId": "getProject",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateProject",
+        "description": "Manager only.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteProject",
+        "description": "Manager only. Removes dependent records.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "required": true
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}/members": {
+      "get": {
+        "operationId": "listMembers",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          }
+        }
+      },
+      "post": {
+        "operationId": "addMember",
+        "description": "Manager only.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}/eligible-users": {
+      "get": {
+        "operationId": "listEligibleUsers",
+        "description": "Manager only.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}/tasks": {
+      "get": {
+        "operationId": "listTasks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "todo",
+                "in_progress",
+                "done"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "priority",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -155,103 +616,681 @@
             }
           },
           "400": {
-            "description": "Invalid input or query parameters.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/R400"
           },
           "401": {
-            "description": "Missing, expired, or invalid session.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
           },
           "404": {
-            "description": "Project not found or inaccessible; identical generic response.",
+            "$ref": "#/components/responses/R404"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTask",
+        "description": "Title and description must be nonblank after trimming. Initial status is todo, priority is medium, and assignees are empty.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/Task"
                 }
               }
             }
           },
-          "500": {
-            "description": "Unexpected error; no internal details exposed.",
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}/tasks/{taskId}": {
+      "get": {
+        "operationId": "getTask",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/Task"
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateTask",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteTask",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "required": true
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}/tasks/{taskId}/assignees": {
+      "post": {
+        "operationId": "assignTask",
+        "description": "The assignee must belong to the project. Repeated assignment is idempotent.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}/tasks/{taskId}/assignees/{userId}": {
+      "delete": {
+        "operationId": "unassignTask",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}/tasks/{taskId}/comments": {
+      "get": {
+        "operationId": "listComments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Comment"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          }
+        }
+      },
+      "post": {
+        "operationId": "addComment",
+        "description": "The server assigns the author and creation time.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-CSRF-Token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/R400"
+          },
+          "401": {
+            "$ref": "#/components/responses/R401"
+          },
+          "403": {
+            "$ref": "#/components/responses/R403"
+          },
+          "404": {
+            "$ref": "#/components/responses/R404"
+          },
+          "409": {
+            "$ref": "#/components/responses/R409"
           }
         }
       }
     }
   },
   "components": {
-    "securitySchemes": {
-      "sessionCookie": {
-        "type": "apiKey",
-        "in": "cookie",
-        "name": "matriz_session",
-        "description": "Server-managed session; proposed cookie flags Secure, HttpOnly, SameSite=Lax, Path=/. No Domain attribute. HTTPS required. Login/logout and expiry policies are outside this two-operation contract."
-      }
-    },
     "schemas": {
-      "CreateTask": {
+      "Error": {
         "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
         "required": [
-          "title",
-          "description"
-        ],
-        "additionalProperties": false,
+          "code",
+          "message"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "displayName"
+        ]
+      },
+      "Csrf": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "headerName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "headerName"
+        ]
+      },
+      "Login": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ]
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "TaskInput": {
+        "type": "object",
         "properties": {
           "title": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 120,
-            "pattern": "\\S",
-            "description": "Trim leading/trailing whitespace before validating and saving."
+            "maxLength": 120
           },
           "description": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 2000,
-            "pattern": "\\S",
-            "description": "Mandatory; trim leading/trailing whitespace before validating and saving."
+            "maxLength": 2000
           }
-        }
-      },
-      "Task": {
-        "type": "object",
+        },
         "required": [
-          "id",
-          "projectId",
           "title",
-          "description",
-          "status",
-          "assigneeId"
-        ],
-        "additionalProperties": false,
+          "description"
+        ]
+      },
+      "ProjectInput": {
+        "type": "object",
         "properties": {
-          "id": {
+          "name": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 100
           },
-          "projectId": {
+          "description": {
             "type": "string",
-            "minLength": 1
+            "minLength": 0,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UserInput": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "CommentInput": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "ProjectUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
           },
+          "description": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 1000
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "version"
+        ]
+      },
+      "TaskUpdate": {
+        "type": "object",
+        "properties": {
           "title": {
             "type": "string",
             "minLength": 1,
@@ -270,24 +1309,209 @@
               "done"
             ]
           },
-          "assigneeId": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "minLength": 1
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
           }
-        }
+        },
+        "required": [
+          "title",
+          "description",
+          "status",
+          "priority",
+          "version"
+        ]
       },
-      "TaskPage": {
+      "Project": {
         "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "managerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "todo": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "in_progress": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "done": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "percentage": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "todo",
+              "in_progress",
+              "done",
+              "total",
+              "percentage"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "managerId",
+          "version"
+        ]
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "todo",
+              "in_progress",
+              "done"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "title",
+          "description",
+          "status",
+          "priority",
+          "version",
+          "assignees"
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "taskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "taskId",
+          "authorId",
+          "authorName",
+          "content",
+          "createdAt"
+        ]
+      },
+      "ProjectPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Project"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
         "required": [
           "items",
           "total",
           "limit",
           "offset"
-        ],
-        "additionalProperties": false,
+        ]
+      },
+      "TaskPage": {
+        "type": "object",
         "properties": {
           "items": {
             "type": "array",
@@ -301,36 +1525,78 @@
           },
           "limit": {
             "type": "integer",
-            "minimum": 1,
-            "maximum": 100
+            "minimum": 0
           },
           "offset": {
             "type": "integer",
             "minimum": 0
           }
-        }
-      },
-      "Error": {
-        "type": "object",
+        },
         "required": [
-          "code",
-          "message"
-        ],
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "fields": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ]
+      }
+    },
+    "responses": {
+      "R400": {
+        "description": "Invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
             }
           }
-        },
-        "additionalProperties": false
+        }
+      },
+      "R401": {
+        "description": "Authentication required or credentials rejected",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "R403": {
+        "description": "Permission denied or CSRF check failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "R404": {
+        "description": "Resource missing or inaccessible",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "R409": {
+        "description": "Stale version or relationship conflict",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "matriz_session"
       }
     }
   }

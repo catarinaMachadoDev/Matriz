@@ -1,0 +1,36 @@
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:${MATRIZ_HTTP_PORT:-8081}:8080"
+    environment:
+      MATRIZ_DB_URL: jdbc:postgresql://db:5432/matriz
+      MATRIZ_DB_USER: matriz
+      MATRIZ_DB_PASSWORD: ${MATRIZ_DB_PASSWORD:?Set MATRIZ_DB_PASSWORD in .env}
+      MATRIZ_BIND_ADDRESS: 0.0.0.0
+      MATRIZ_SECURE_COOKIE: "false"
+      MATRIZ_DEMO_ENABLED: ${MATRIZ_DEMO_ENABLED:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: matriz
+      POSTGRES_USER: matriz
+      POSTGRES_PASSWORD: ${MATRIZ_DB_PASSWORD:?Set MATRIZ_DB_PASSWORD in .env}
+    volumes:
+      - matriz-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matriz -d matriz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  matriz-data:

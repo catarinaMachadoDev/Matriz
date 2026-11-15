@@ -27,23 +27,23 @@ As a project manager, I want to add an existing user as a member so that we can 
 - Given I am the manager and the specified account exists, When I add it, Then that account can view and manage tasks in this project.
 - Given an account that is already a member, When I add it again, Then only one membership exists and I am informed that the user already belongs to the project.
 - Given I am a member without the manager role, When I try to add someone, Then the request is denied and membership remains unchanged.
-- Given a nonexistent account, When I try to add it, Then the operation fails without creating an account or membership. Safe account discovery remains pending under Q-02.
+- Given a nonexistent account, When I try to add it, Then the operation fails without creating an account or membership. Managers select from existing demo accounts.
 
 ## US-04 — Task creation (RF-04)
 
 As a member, I want to create a task within a project so that I can record work to be performed.
 
-- Given project access and a valid title of 1 to 120 characters, When I submit the task with a mandatory description of 1 to 2000 characters after trimming surrounding whitespace, Then it appears in that project as “To do” with no assignee.
+- Given project access and a valid title of 1 to 120 characters, When I submit the task with a mandatory description of 1 to 2000 characters after trimming surrounding whitespace, Then it appears in that project as “To do” at Medium priority with no assignees.
 - Given confirmed creation, When I reload the application, Then the task remains in the list with the same data.
 - Given an empty title, whitespace only, 121 title characters, or a missing, blank, whitespace-only, or 2001-character description, When I submit it, Then no task is created and the entered fields are preserved with an error indication.
 - Given a nonexistent or inaccessible project, When I try to create a task, Then the operation is denied without creating data or revealing another project's data.
 
 ## US-05 — Assignee (RF-05)
 
-As a member, I want to assign a task owner so that responsibility for its execution is clear.
+As a member, I want to assign one or more project members so that responsibility for its execution is clear.
 
-- Given a task in my project and a project member, When I assign that member, Then the task displays that assignee.
-- Given an assigned task, When I remove the assignment, Then the task displays “Unassigned”.
+- Given a task in my project and a project member, When I assign that member, Then the task displays that assignee alongside existing assignees. Repeating the action leaves one assignment.
+- Given an assigned task, When I remove the assignment, Then only that assignee is removed. An empty list displays “Unassigned”.
 - Given a user who does not belong to the project, When I try to assign that user, Then the operation is denied and the previous assignment is preserved.
 
 ## US-06 — Status (RF-06)
@@ -66,4 +66,17 @@ As a member, I want to view project progress so that I can understand pending an
 
 ## Exception coverage
 
-The criteria cover invalid sessions, cross-project access, blank inputs, length boundaries, nonexistent accounts, duplicate membership, external assignees, unknown statuses, reopening, and division by zero. Policies for simultaneous edits and request retries after network failures remain pending under Q-05 and must be defined before implementing those behaviors.
+The criteria cover invalid sessions, cross-project access, blank inputs, length boundaries, nonexistent accounts, duplicate membership, external assignees, unknown statuses, reopening, and division by zero. Stale project or task versions produce a conflict. Retrying a write after a network failure requires checking its outcome first.
+
+## US-08 — Comments (RF-08)
+
+As a project member, I want to add and read task comments so the team can follow the discussion.
+
+- Given a project member and a nonblank comment of up to 2,000 characters, when the member submits it, then the task shows the comment with the authenticated author and server timestamp.
+- Given an empty or oversized comment, when the member submits it, then the API rejects it and saves no comment.
+
+## Assignment 03 additions to existing stories
+
+- US-02: Search by project name. Only managers can edit or delete a project. A confirmed deletion removes dependent records.
+- US-04: A member can open, edit or delete a task. Deleting a task removes its comments and assignments.
+- US-06: A member can change priority and filter by status or priority. Project progress continues to reflect all tasks. An edit using a stale version returns a conflict.

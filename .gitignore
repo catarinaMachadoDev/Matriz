@@ -62,3 +62,10 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Matriz local configuration, database and tooling
+.local/
+.env
+.env.*
+!.env.example
+.idea/

@@ -1,0 +1,9 @@
+.git
+.github
+.idea
+.local
+.env
+.env.*
+target
+docs
+node_modules
