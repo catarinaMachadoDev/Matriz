@@ -1,6 +1,6 @@
 # Initial backlog
 
-Status: proposal dependent on assumptions in [constraints.md](constraints.md). All stories are Must priorities in the proposed MVP. Acceptance criteria specify future tests; they are not tests already executed.
+Status: MVP scope and task rules approved by the product owner on November 15, 2026; remaining details depend on assumptions in [constraints.md](constraints.md). All stories are Must priorities in the proposed MVP. Acceptance criteria specify future tests; they are not tests already executed.
 
 ## US-01 — Access (RF-01)
 
@@ -33,9 +33,9 @@ As a project manager, I want to add an existing user as a member so that we can 
 
 As a member, I want to create a task within a project so that I can record work to be performed.
 
-- Given project access and a valid title of 1 to 120 characters, When I submit the task with an optional description of up to 2000 characters, Then it appears in that project as “To do” with no assignee.
+- Given project access and a valid title of 1 to 120 characters, When I submit the task with a mandatory description of 1 to 2000 characters after trimming surrounding whitespace, Then it appears in that project as “To do” with no assignee.
 - Given confirmed creation, When I reload the application, Then the task remains in the list with the same data.
-- Given an empty title, whitespace only, 121 title characters, or a description of 2001 characters, When I submit it, Then no task is created and the entered fields are preserved with an error indication.
+- Given an empty title, whitespace only, 121 title characters, or a missing, blank, whitespace-only, or 2001-character description, When I submit it, Then no task is created and the entered fields are preserved with an error indication.
 - Given a nonexistent or inaccessible project, When I try to create a task, Then the operation is denied without creating data or revealing another project's data.
 
 ## US-05 — Assignee (RF-05)

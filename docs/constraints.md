@@ -4,7 +4,7 @@
 
 - Produce the five Specification Pack files and version them in Git.
 - Analyze and specify in this phase; do not implement application code.
-- Defer language, framework, database, and architecture decisions to the next phase.
+- Assignment 01 deferred technical design. In Assignment 02, the owner approved a modular monolith while retaining technology-neutral design.
 - Keep assumptions explicit and criteria verifiable, with human review.
 - Source: Practical Laboratory Assignment 01, pages 1–7. The client context is deliberately incomplete.
 
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | P-01 | Who can sign in and how are accounts obtained? | Internal users with provisioned accounts; mechanism and responsible party still to be defined |
 | P-02 | Who can view and manage each project? | Creator is manager; only members have access; manager adds existing accounts |
-| P-03 | Which fields are mandatory? | Project name 1–100, task title 1–120, and optional description up to 2000 characters; trim surrounding whitespace |
+| P-03 | Which fields are mandatory? | Project name 1–100, task title 1–120, and mandatory description of 1–2000 characters after trimming; trim surrounding whitespace |
 | P-04 | What is the workflow? | To do, In progress, and Done; members may perform all transitions |
 | P-05 | How many assignees can a task have? | Zero or one, always a project member |
 | P-06 | How is progress measured? | Percentage of completed tasks, equally weighted and rounded to one decimal place |
@@ -22,16 +22,16 @@
 | P-08 | How will the application be used? | English web interface with primary flows accessible by keyboard; supported browsers and devices remain to be confirmed |
 | P-09 | What are the data expectations? | Confirmed operations persist across sessions; infrastructure and recovery remain to be defined |
 
-These assumptions are analyst proposals requiring human validation, except that English is now requested by the project owner for project content. No client answers confirm the remaining assumptions. The exercise allows reasonable provisional answers when the client is unavailable. Existing P, RF, and RNF identifiers are retained to preserve traceability across versions.
+These assumptions are analyst proposals requiring human validation, except that English is now requested by the project owner for project content. The owner subsequently approved task rules P-03 (task fields only, with mandatory description), P-04, P-05 and P-06, shared task editing, and cookie sessions. Project-name limits, account provisioning and other unconfirmed details remain assumptions. The exercise allows reasonable provisional answers when the client is unavailable. Existing P, RF, and RNF identifiers are retained to preserve traceability across versions.
 
 ## Questions pending before implementation
 
-- Q-01: confirm MVP scope, roles, and whether all members may edit other members' tasks.
+- Q-01: MVP scope and project members updating any task in their own project approved on November 15, 2026; detailed manager/provisioning processes remain open.
 - Q-02: define authentication, account provisioning and recovery, safe user identification, and protection against account enumeration.
 - Q-03: define expected load, latency, availability, backups, and measurable recovery objectives.
 - Q-04: define personal data retention, deletion, access, applicable jurisdiction, and data controller responsibilities. Do not claim legal compliance without assessment.
 - Q-05: decide how to handle simultaneous edits and duplicates caused by retries; this specification does not promise automatic resolution.
-- Q-06: select technologies, architecture, data model, APIs, hosting, and testing strategy in the next phase.
+- Q-06: modular monolith and create/list task operations approved. Architecture Pack drafts the model and API; language, framework, database, hosting, and testing tools remain undecided.
 
 ## Proposed security and privacy requirements
 

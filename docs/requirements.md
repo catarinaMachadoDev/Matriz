@@ -2,7 +2,7 @@
 
 ## Source and status
 
-Source: Practical Laboratory Assignment 01, project context. Fact F-01: the client wants teams to organize projects, manage tasks, and track progress. The assignment confirms that detailed features, rules, technologies, and priorities have not yet been defined. The requirements below are proposals for validation, supported by assumptions P-01 through P-09 in [constraints.md](constraints.md). Existing requirement IDs are retained for traceability.
+Source: Practical Laboratory Assignment 01, project context. Fact F-01: the client wants teams to organize projects, manage tasks, and track progress. The assignment confirms that detailed features, rules, technologies, and priorities have not yet been defined. The MVP scope, shared task editing, and task rules were approved by the product owner on November 15, 2026; description is mandatory. Remaining details are supported by assumptions P-01 through P-09 in [constraints.md](constraints.md). Existing requirement IDs are retained for traceability.
 
 ## Vision and objectives
 
@@ -20,7 +20,7 @@ Roles apply per project: managing one project does not grant access to another. 
 
 ## Proposed functional requirements
 
-All features below are Must priorities for the proposed MVP. This prioritization is an exercise proposal, not client confirmation.
+All features below are Must priorities for the proposed MVP. The product owner approved these seven MVP features on November 15, 2026.
 
 | ID | Feature | Rationale | Story | Assumption |
 | --- | --- | --- | --- | --- |
@@ -35,7 +35,7 @@ All features below are Must priorities for the proposed MVP. This prioritization
 ## Proposed business rules
 
 - Each project has one manager and zero or more additional members. The manager is also a member. Only the manager adds members; ordinary members cannot change permissions.
-- Each task belongs to exactly one project and requires a title of 1 to 120 characters after trimming leading and trailing whitespace. Its description is optional, up to 2000 characters. A project name contains 1 to 100 characters after the same normalization. Names and titles do not need to be unique.
+- Each task belongs to exactly one project and requires a title of 1 to 120 characters after trimming leading and trailing whitespace. Its description is mandatory, containing 1 to 2000 characters after trimming leading and trailing whitespace. A project name contains 1 to 100 characters after the same normalization. Names and titles do not need to be unique.
 - Tasks start in “To do”. Allowed statuses are “To do”, “In progress”, and “Done”. Any member can perform any transition between these statuses, including reopening a task.
 - The assignee is optional and, when present, must belong to the same project. Adding an existing member again does not duplicate membership.
 - Progress = completed tasks / total tasks × 100, rounded to one decimal place. With no tasks, display zero tasks and “No tasks”, without division by zero.
