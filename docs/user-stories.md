@@ -1,69 +1,69 @@
-# Backlog inicial
+# Initial backlog
 
-Estado: proposta dependente dos pressupostos em [constraints.md](constraints.md). Todas as histórias têm prioridade Must no MVP proposto; os critérios são especificações para testes futuros, não testes já executados.
+Status: proposal dependent on assumptions in [constraints.md](constraints.md). All stories are Must priorities in the proposed MVP. Acceptance criteria specify future tests; they are not tests already executed.
 
-## US-01 — Acesso (RF-01)
+## US-01 — Access (RF-01)
 
-Como utilizador, quero iniciar e terminar a minha sessão, para aceder ao trabalho com a minha identidade.
+As a user, I want to sign in and sign out so that I can access work under my own identity.
 
-- Given uma conta previamente disponibilizada, When forneço credenciais válidas, Then obtenho acesso autenticado aos meus projetos.
-- Given credenciais inválidas, When tento entrar, Then o acesso é recusado com mensagem genérica que não confirma a existência da conta.
-- Given uma sessão ativa, When termino a sessão, Then essa sessão deixa de autorizar novas operações protegidas.
-- Given ausência de sessão válida, When solicito dados de um projeto, Then não recebo dados e nenhuma alteração é efetuada.
+- Given a previously provisioned account, When I provide valid credentials, Then I receive authenticated access to my projects.
+- Given invalid credentials, When I try to sign in, Then access is denied with a generic message that does not confirm whether the account exists.
+- Given an active session, When I sign out, Then that session no longer authorizes new protected operations.
+- Given no valid session, When I request project data, Then no data is returned and no changes are made.
 
-## US-02 — Projetos (RF-02)
+## US-02 — Projects (RF-02)
 
-Como utilizador autenticado, quero criar e consultar os meus projetos, para organizar trabalho separado.
+As an authenticated user, I want to create and view my projects so that I can organize separate areas of work.
 
-- Given uma sessão válida, When crio um projeto com nome de 1 a 100 caracteres após remover espaços nas extremidades, Then o projeto é guardado e fico como gestor e membro.
-- Given projetos A e B, sendo membro apenas de A, When consulto a lista, Then vejo A e não vejo B.
-- Given um nome vazio, apenas espaços ou com 101 caracteres após normalização, When submeto, Then recebo erro de validação e não é criado projeto.
-- Given nenhum projeto acessível, When consulto a lista, Then vejo um estado vazio explícito.
+- Given a valid session, When I create a project with a name of 1 to 100 characters after trimming surrounding whitespace, Then the project is saved and I become its manager and a member.
+- Given projects A and B and membership only in A, When I view the list, Then I see A and do not see B.
+- Given an empty name, whitespace only, or 101 characters after normalization, When I submit it, Then I receive a validation error and no project is created.
+- Given no accessible projects, When I view the list, Then I see an explicit empty state.
 
-## US-03 — Membros (RF-03)
+## US-03 — Members (RF-03)
 
-Como gestor do projeto, quero adicionar um utilizador existente como membro, para permitir colaboração.
+As a project manager, I want to add an existing user as a member so that we can collaborate.
 
-- Given que sou gestor e a conta indicada existe, When a adiciono, Then essa conta passa a consultar e gerir tarefas desse projeto.
-- Given uma conta já membro, When volto a adicioná-la, Then continua a existir apenas uma associação e sou informado de que já pertence ao projeto.
-- Given que sou membro sem o papel de gestor, When tento adicionar alguém, Then o pedido é recusado e os membros não mudam.
-- Given uma conta inexistente, When tento adicioná-la, Then a operação falha sem criar conta ou associação. A forma segura de localizar contas está pendente em Q-02.
+- Given I am the manager and the specified account exists, When I add it, Then that account can view and manage tasks in this project.
+- Given an account that is already a member, When I add it again, Then only one membership exists and I am informed that the user already belongs to the project.
+- Given I am a member without the manager role, When I try to add someone, Then the request is denied and membership remains unchanged.
+- Given a nonexistent account, When I try to add it, Then the operation fails without creating an account or membership. Safe account discovery remains pending under Q-02.
 
-## US-04 — Criação de tarefas (RF-04)
+## US-04 — Task creation (RF-04)
 
-Como membro, quero criar uma tarefa num projeto, para registar trabalho a realizar.
+As a member, I want to create a task within a project so that I can record work to be performed.
 
-- Given acesso ao projeto e título válido de 1 a 120 caracteres, When submeto a tarefa com descrição opcional até 2000 caracteres, Then ela aparece nesse projeto em “Por fazer”, sem responsável.
-- Given uma criação confirmada, When recarrego a aplicação, Then a tarefa permanece na listagem com os mesmos dados.
-- Given título vazio, apenas espaços, 121 caracteres ou descrição com 2001 caracteres, When submeto, Then não é criada tarefa e os campos são preservados com indicação do erro.
-- Given um projeto inexistente ou inacessível, When tento criar uma tarefa, Then a operação é recusada sem criar dados e sem revelar dados de outro projeto.
+- Given project access and a valid title of 1 to 120 characters, When I submit the task with an optional description of up to 2000 characters, Then it appears in that project as “To do” with no assignee.
+- Given confirmed creation, When I reload the application, Then the task remains in the list with the same data.
+- Given an empty title, whitespace only, 121 title characters, or a description of 2001 characters, When I submit it, Then no task is created and the entered fields are preserved with an error indication.
+- Given a nonexistent or inaccessible project, When I try to create a task, Then the operation is denied without creating data or revealing another project's data.
 
-## US-05 — Responsável (RF-05)
+## US-05 — Assignee (RF-05)
 
-Como membro, quero atribuir um responsável à tarefa, para tornar claro quem acompanha a sua execução.
+As a member, I want to assign a task owner so that responsibility for its execution is clear.
 
-- Given uma tarefa do meu projeto e um utilizador membro, When o atribuo, Then a tarefa passa a apresentar esse responsável.
-- Given um responsável atribuído, When retiro a atribuição, Then a tarefa fica “Sem responsável”.
-- Given um utilizador que não pertence ao projeto, When tento atribuí-lo, Then a operação é recusada e a atribuição anterior mantém-se.
+- Given a task in my project and a project member, When I assign that member, Then the task displays that assignee.
+- Given an assigned task, When I remove the assignment, Then the task displays “Unassigned”.
+- Given a user who does not belong to the project, When I try to assign that user, Then the operation is denied and the previous assignment is preserved.
 
-## US-06 — Estado (RF-06)
+## US-06 — Status (RF-06)
 
-Como membro, quero atualizar o estado de uma tarefa, para comunicar o avanço do trabalho.
+As a member, I want to update a task's status so that I can communicate work progress.
 
-- Given uma tarefa acessível, When escolho um dos três estados definidos, Then o novo estado é guardado e apresentado após nova consulta.
-- Given uma tarefa concluída, When a altero para “Em curso”, Then é reaberta e deixa de contar como concluída.
-- Given um valor fora dos estados permitidos, When o envio, Then o pedido é rejeitado sem alterar a tarefa.
-- Given uma tarefa de outro projeto ao qual não pertenço, When tento alterar o estado diretamente, Then o acesso é recusado e a tarefa mantém o estado anterior.
+- Given an accessible task, When I choose one of the three defined statuses, Then the new status is saved and displayed on the next query.
+- Given a completed task, When I change it to “In progress”, Then it is reopened and no longer counted as completed.
+- Given a value outside the allowed statuses, When I submit it, Then the request is rejected without changing the task.
+- Given a task in another project I do not belong to, When I directly attempt a status change, Then access is denied and the previous status remains.
 
-## US-07 — Progresso (RF-07)
+## US-07 — Progress (RF-07)
 
-Como membro, quero consultar o progresso do projeto, para perceber o trabalho pendente e concluído.
+As a member, I want to view project progress so that I can understand pending and completed work.
 
-- Given quatro tarefas, duas concluídas, uma em curso e uma por fazer, When consulto o progresso, Then vejo total 4, contagens 2/1/1 e 50,0% de conclusão.
-- Given três tarefas e uma concluída, When consulto, Then vejo 33,3%.
-- Given um projeto sem tarefas, When consulto, Then vejo total 0 e “Sem tarefas”.
-- Given uma alteração de estado confirmada, When atualizo a vista de progresso, Then as contagens refletem o novo estado. Atualização em tempo real não é exigida.
+- Given four tasks, two done, one in progress, and one to do, When I view progress, Then I see a total of 4, respective counts of 2/1/1, and 50.0% completion.
+- Given three tasks and one completed task, When I view progress, Then I see 33.3%.
+- Given a project with no tasks, When I view progress, Then I see a total of 0 and “No tasks”.
+- Given a confirmed status change, When I refresh the progress view, Then the counts reflect the new status. Real-time updates are not required.
 
-## Cobertura de exceções
+## Exception coverage
 
-Os critérios abrangem sessão inválida, acesso entre projetos, entradas em branco, limites de comprimento, conta inexistente, membro duplicado, responsável externo, estado desconhecido, reabertura e divisão por zero. A política para edições simultâneas e repetição de pedidos após falha de rede está pendente em Q-05 e deve ser definida antes da implementação desses comportamentos.
+The criteria cover invalid sessions, cross-project access, blank inputs, length boundaries, nonexistent accounts, duplicate membership, external assignees, unknown statuses, reopening, and division by zero. Policies for simultaneous edits and request retries after network failures remain pending under Q-05 and must be defined before implementing those behaviors.

@@ -1,26 +1,26 @@
 # Matriz
 
-Aplicação proposta para organizar projetos, gerir tarefas e acompanhar o progresso de equipas de trabalho.
+Proposed application for organizing projects, managing tasks, and tracking team progress.
 
-## Estado atual
+## Current status
 
-Specification Pack da Ficha Prática Laboratorial 01, de 15 de novembro de 2026. Esta entrega contém análise e documentação; não implementa a aplicação. A validação final pelo responsável pelo produto está pendente. O pedido inicial do cliente é a única fonte de necessidades confirmadas; os detalhes do MVP são propostas identificadas por pressupostos.
+Specification Pack for Practical Laboratory Assignment 01, dated November 15, 2026. This deliverable contains analysis and documentation; the application has not been implemented. Final product owner validation is pending. The initial client request is the only source of confirmed needs; detailed MVP requirements are proposals with explicit assumptions.
 
-O repositório Git encontra-se em `C:/Users/catar/Desktop/Matriz/Matriz`. A pasta acima contém um scaffold Maven/Java; a sua existência não constitui uma decisão técnica aprovada para este produto.
+The Git repository is located at `C:/Users/catar/Desktop/Matriz`. The existing Maven/Java scaffold is preserved in this same root directory. Its presence does not constitute an approved technology decision for this product.
 
-## Objetivos e MVP proposto
+## Objectives and proposed MVP
 
-Centralizar trabalho e tornar o progresso visível aos membros autorizados. O MVP propõe acesso autenticado, criação e consulta de projetos, gestão dos membros de cada projeto, criação de tarefas, atribuição de responsável, atualização de estado e consulta do progresso. Os pormenores e prioridades estão na documentação.
+Centralize work and make progress visible to authorized members. The proposed MVP includes authenticated access, project creation and viewing, project membership management, task creation, assignee management, status updates, and progress tracking. Details and priorities are documented below.
 
-## Documentação
+## Documentation
 
-| Ficheiro | Conteúdo |
+| File | Contents |
 | --- | --- |
-| [Requisitos](docs/requirements.md) | Factos, utilizadores, âmbito, requisitos e prioridades |
-| [User Stories](docs/user-stories.md) | Backlog, critérios Given/When/Then e exceções |
-| [Restrições](docs/constraints.md) | Pressupostos, perguntas, decisões pendentes e revisão crítica |
-| [Instruções para agentes](AGENTS.md) | Regras de trabalho no projeto |
+| [Requirements](docs/requirements.md) | Facts, users, scope, requirements, and priorities |
+| [User stories](docs/user-stories.md) | Backlog, Given/When/Then criteria, and exceptions |
+| [Constraints](docs/constraints.md) | Assumptions, questions, pending decisions, and critical review |
+| [Agent instructions](AGENTS.md) | Project working rules |
 
-## Próxima fase
+## Next phase
 
-Validar o âmbito e os pressupostos com o responsável pelo produto antes de os tratar como requisitos aprovados. Depois, selecionar arquitetura, tecnologias, modelo de dados, contratos de API e protótipos com base nesta especificação. Não existem ainda comandos de instalação, execução ou testes da aplicação.
+Validate scope and assumptions with the product owner before treating them as approved requirements. Then select architecture, technologies, data model, API contracts, and prototypes based on this specification. Application installation, execution, and test commands have not yet been defined.
