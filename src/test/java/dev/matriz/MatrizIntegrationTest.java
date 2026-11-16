@@ -75,6 +75,29 @@ class MatrizIntegrationTest {
   mvc.perform(get(base(p)).param("status","done").param("priority","high").param("limit","1")).andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.total").value(2));
   mvc.perform(get("/api/projects/"+p)).andExpect(jsonPath("$.counts.total").value(3)).andExpect(jsonPath("$.counts.done").value(2)).andExpect(jsonPath("$.counts.percentage").value(66.7));
  }
+ @Test @WithMockUser("alex") void projectAndTaskResponsesMatchTheOpenApiFields()throws Exception{
+  var schemas=json.readTree(java.nio.file.Path.of("openapi.yaml").toFile()).at("/components/schemas");
+  var project=project();
+  var task=(UUID)tasks.create(project,alex(),"Contract task","Details").get("id");
+  tasks.assign(project,alex(),task,alex());
+  var taskPage=json.readTree(mvc.perform(get(base(project))).andExpect(status().isOk())
+      .andReturn().getResponse().getContentAsString());
+  var taskBody=taskPage.at("/items/0");
+  assertFields(schemas.get("TaskPage").get("properties"),taskPage);
+  assertFields(schemas.get("Task").get("properties"),taskBody);
+  assertFields(schemas.get("User").get("properties"),taskBody.at("/assignees/0"));
+  var projectBody=json.readTree(mvc.perform(get("/api/projects/"+project)).andExpect(status().isOk())
+      .andReturn().getResponse().getContentAsString());
+  var projectSchema=schemas.get("Project").get("properties");
+  assertFields(projectSchema,projectBody);
+  assertFields(projectSchema.at("/counts/properties"),projectBody.get("counts"));
+ }
+ private static void assertFields(com.fasterxml.jackson.databind.JsonNode documented,com.fasterxml.jackson.databind.JsonNode actual){
+  Set<String> expectedFields=new HashSet<>(), actualFields=new HashSet<>();
+  documented.fieldNames().forEachRemaining(expectedFields::add);
+  actual.fieldNames().forEachRemaining(actualFields::add);
+  assertEquals(expectedFields,actualFields);
+ }
  @Test void authenticationCsrfAndLogout()throws Exception{
   mvc.perform(get("/api/projects")).andExpect(status().isUnauthorized());
   mvc.perform(post("/api/auth/login").contentType("application/json").content(body(Map.of("username","alex","password","MatrizDemo!2026")))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID"));

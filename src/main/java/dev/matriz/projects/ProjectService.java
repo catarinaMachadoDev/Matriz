@@ -18,5 +18,25 @@ public class ProjectService {
  @Transactional public void delete(UUID project,UUID user,long version){manager(project,user);version(version);changed(db.jdbc.update("delete from project where id=? and version=?",project,version));}
  public List<Map<String,Object>> members(UUID project,UUID user){access(project,user);return db.rows("select u.id,u.username,u.display_name from app_user u join project_member m on m.user_id=u.id where m.project_id=? order by u.username",project);}
  @Transactional public void addMember(UUID project,UUID user,UUID member){manager(project,user);if(db.rows("select id from app_user where id=?",member).isEmpty())throw new Failure(400,"User does not exist.");db.jdbc.update("insert into project_member values(?,?) on conflict do nothing",project,member);}
- public Map<String,Object> counts(UUID project,UUID user){access(project,user);var counts=new LinkedHashMap<String,Object>();long total=0,done=0;for(String s:List.of("todo","in_progress","done")){long n=db.jdbc.queryForObject("select count(*) from task where project_id=? and status=?",Long.class,project,s);counts.put(s,n);total+=n;if(s.equals("done"))done=n;}counts.put("total",total);counts.put("percentage",total==0?0:Math.round(done*1000.0/total)/10.0);return counts;}
+ public record TaskCounts(long todo, @com.fasterxml.jackson.annotation.JsonProperty("in_progress") long inProgress,
+                          long done,long total,double percentage){}
+ private static final String COUNTS_SQL="""
+     count(*) filter (where status='todo'),
+     count(*) filter (where status='in_progress'),
+     count(*) filter (where status='done'), count(*)
+     """;
+ public Map<UUID,TaskCounts> counts(List<UUID> projects){
+  if(projects.isEmpty())return Map.of();
+  String slots=String.join(",",Collections.nCopies(projects.size(),"?"));
+  Map<UUID,TaskCounts> result=new HashMap<>();
+  db.jdbc.query("select project_id,"+COUNTS_SQL+" from task where project_id in ("+slots+") group by project_id",
+      rs->{
+       long done=rs.getLong(4), total=rs.getLong(5);
+       result.put(rs.getObject(1,UUID.class),new TaskCounts(rs.getLong(2),rs.getLong(3),done,total,Math.round(done*1000.0/total)/10.0));
+      },projects.toArray());
+  return result;
+ }
+ public TaskCounts countsOrEmpty(Map<UUID,TaskCounts> counts,UUID project){
+  return counts.getOrDefault(project,new TaskCounts(0,0,0,0,0));
+ }
 }
