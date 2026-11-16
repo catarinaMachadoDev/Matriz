@@ -83,6 +83,24 @@ class TaskBrowserTest {
     }
 
     @Test
+    void canSignBackInAfterTheSessionCookieExpires() {
+        String name = "Session project " + UUID.randomUUID();
+        UUID project = seedProject(name);
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch()) {
+            Page page = browser.newPage();
+            signIn(page);
+            page.context().clearCookies();
+            page.evaluate("hash => location.hash = hash", "#/projects/" + project);
+            assertThat(page.getByLabel("Username")).isVisible();
+            enterCredentials(page);
+            assertThat(heading(page, name)).isVisible();
+        } finally {
+            jdbc.update("delete from project where id=?", project);
+        }
+    }
+
+    @Test
     void postingACommentPreservesTheUnsavedTaskEdit() {
         UUID project = seedProject("Draft project " + UUID.randomUUID());
         UUID task = UUID.randomUUID();

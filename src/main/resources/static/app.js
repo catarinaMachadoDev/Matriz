@@ -8,7 +8,33 @@ const options=(values,current)=>values.map(v=>`<option value="${esc(v)}" ${v===c
 const field=(name,title,value='',max=120,required=true,area=false)=>`<label for="${name}">${title}${required?' *':''}</label><${area?'textarea':'input'} id="${name}" name="${name}" maxlength="${max}" ${required?'required':''}${area?'':` value="${esc(value)}"`}>${area?esc(value)+'</textarea>':''}`;
 function notice(text){const n=document.querySelector('#notice');n.textContent=text;setTimeout(()=>{if(n.textContent===text)n.textContent='';},5000);}
 async function token(){const r=await fetch('/api/auth/csrf',{credentials:'same-origin'});if(!r.ok)throw Error('Unable to establish a session.');state.csrf=(await r.json()).token;}
-async function api(path,method='GET',body){if(!state.csrf)await token();const r=await fetch('/api'+path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json',...(method==='GET'?{}:{'X-CSRF-Token':state.csrf})},...(body===undefined?{}:{body:JSON.stringify(body)})});if(r.status===204)return null;let data;try{data=await r.json();}catch{data={message:'The server could not complete the request.'};}if(!r.ok){const e=Error(data.message||'Request failed.');e.status=r.status;e.fields=data.fields||{};if(r.status===401&&path!='/auth/login'){state.user=null;identity.innerHTML='';notice('Your session expired. Sign in again.');}throw e;}return data;}
+async function renewToken(path){
+  if(path!='/auth/login'&&state.user){
+    const current=await api('/auth/me');
+    if(current.id!==state.user.id)throw Error('The signed-in account changed. Reload before continuing.');
+  }
+  await token();
+}
+async function api(path,method='GET',body,retryCsrf=true){
+  if(method!=='GET'&&!state.csrf)await renewToken(path);
+  const r=await fetch('/api'+path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json',...(method==='GET'?{}:{'X-CSRF-Token':state.csrf})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+  if(r.status===204)return null;
+  let data;
+  try{data=await r.json();}catch{data={message:'The server could not complete the request.'};}
+  if(r.status===403&&data.code==='CSRF_INVALID'&&retryCsrf){
+    state.csrf=null;
+    await renewToken(path);
+    return api(path,method,body,false);
+  }
+  if(!r.ok){
+    if(r.status===401&&path!='/auth/login')state.csrf=null;
+    const error=Error(data.message||'Request failed.');
+    error.status=r.status;
+    error.fields=data.fields||{};
+    throw error;
+  }
+  return data;
+}
 function login(){identity.innerHTML='';app.innerHTML=`<section class="login"><div class="eyebrow">Your team, in focus</div><h1>Welcome to Matriz.</h1><p class="muted">A little clarity for everything your team is building.</p><form class="card" data-form="login"><h2>Sign in</h2><label for="username">Username</label><input id="username" name="username" required maxlength="80" autocomplete="username"><label for="password">Password</label><input id="password" name="password" type="password" required maxlength="200" autocomplete="current-password"><p class="error" role="alert"></p><button>Sign in to your workspace</button></form></section>`;}
 function counts(c){return `<div class="stats"><div class="stat"><small>Total tasks</small><strong>${c.total}</strong></div><div class="stat"><small>To do</small><strong>${c.todo}</strong></div><div class="stat"><small>In progress</small><strong>${c.in_progress}</strong></div><div class="stat"><small>Done</small><strong>${c.done}</strong></div></div><p class="hint">${c.total?c.percentage+'% complete':'No tasks'} · All tasks in this project</p><progress max="100" value="${c.percentage}">${c.percentage}%</progress>`;}
 function pagination(page,kind){return `<div class="pagination"><span>${page.total?state[kind]+1:0}–${Math.min(state[kind]+page.items.length,page.total)} of ${page.total}</span><div><button class="secondary" data-page="${kind}" data-delta="-20" ${state[kind]===0?'disabled':''}>Previous</button> <button class="secondary" data-page="${kind}" data-delta="20" ${state[kind]+20>=page.total?'disabled':''}>Next</button></div></div>`;}
@@ -47,12 +73,20 @@ async function refreshTaskWithDraft(){
   await task(project.id,current.id,++rendering,draft);
 }
 function actionError(error,target){
+  if(error.status===401){
+    const link=document.createElement('a');
+    link.href='/';link.target='_blank';link.rel='noopener';link.textContent='Sign in in a new tab';
+    const message=target||document.querySelector('#notice');
+    message.textContent='Your session expired. ';
+    message.append(link,', then retry this action.');
+    return;
+  }
   if(target)target.textContent=error.message+Object.entries(error.fields||{}).map(([key,value])=>'\n'+key+': '+value).join('');
   else notice(error.message);
 }
 async function render(){const seq=++rendering;view={};if(!state.user){login();return;}identity.innerHTML=`<span>${esc(state.user.displayName)}</span><button class="secondary" data-action="logout">Sign out</button>`;app.innerHTML='<p class="empty">Loading your workspace…</p>';try{const parts=location.hash.replace(/^#\/?/,'').split('/').filter(Boolean);if(parts[0]==='projects'&&parts[1]){if(parts[2]==='tasks'&&parts[3])await task(parts[1],parts[3],seq);else await project(parts[1],seq);}else await dashboard(seq);}catch(e){if(seq!==rendering)return;if(e.status===401){state.user=null;login();return;}app.innerHTML=`<section class="card"><h2>Unable to load this view</h2><p class="error">${esc(e.message)}</p><a class="button" href="#/">Back to projects</a> <button class="secondary" data-action="refresh">Try again</button></section>`;}}
 document.addEventListener('submit',async event=>{const form=event.target.closest('[data-form]');if(!form)return;event.preventDefault();const data=Object.fromEntries(new FormData(form)),kind=form.dataset.form;const buttons=[...form.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);const error=form.querySelector('.error');if(error)error.textContent='';try{const seq=rendering;const {project,task}=view;const base=project?'/projects/'+project.id:'';const taskPath=task?base+'/tasks/'+task.id:'';
- switch(kind){case 'login':state.user=await api('/auth/login','POST',data);await token();await render();return;
+ switch(kind){case 'login':await token();state.user=await api('/auth/login','POST',data);await token();await render();return;
  case 'search':state.search=data.search;state.projectOffset=0;break;
  case 'filters':state.status=data.status;state.priority=data.priority;state.offset=0;break;
  case 'project-create':{const p=await api('/projects','POST',data);notice('Project created.');if(seq===rendering)location.hash='#/projects/'+p.id;return;}

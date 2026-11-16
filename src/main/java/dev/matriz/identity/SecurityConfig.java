@@ -21,7 +21,14 @@ public class SecurityConfig {
   return http.authorizeHttpRequests(a->a.requestMatchers("/","/index.html","/app.js","/styles.css","/favicon.ico","/error","/api/auth/login","/api/auth/csrf").permitAll().anyRequest().authenticated())
    .csrf(c->c.csrfTokenRepository(csrf).csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
    .exceptionHandling(e->e.authenticationEntryPoint((req,res,ex)->{res.setStatus(401);res.setContentType("application/json");mapper.writeValue(res.getOutputStream(),Map.of("code","UNAUTHENTICATED","message","Please sign in."));})
-    .accessDeniedHandler((req,res,ex)->{res.setStatus(403);res.setContentType("application/json");mapper.writeValue(res.getOutputStream(),Map.of("code","FORBIDDEN","message","Request denied. Refresh and try again."));}))
+    .accessDeniedHandler((req,res,ex)->{
+     res.setStatus(403);
+     res.setContentType("application/json");
+     boolean invalidCsrf=ex instanceof CsrfException;
+     mapper.writeValue(res.getOutputStream(),Map.of(
+       "code",invalidCsrf?"CSRF_INVALID":"FORBIDDEN",
+       "message",invalidCsrf?"Refresh your session and try again.":"Request denied."));
+    }))
    .headers(h->h.contentSecurityPolicy(c->c.policyDirectives("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'")))
    .requestCache(c->c.disable()).formLogin(c->c.disable()).httpBasic(c->c.disable()).logout(c->c.disable()).build();
  }
