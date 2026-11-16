@@ -75,6 +75,14 @@ class MatrizIntegrationTest {
   mvc.perform(get(base(p)).param("status","done").param("priority","high").param("limit","1")).andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.total").value(2));
   mvc.perform(get("/api/projects/"+p)).andExpect(jsonPath("$.counts.total").value(3)).andExpect(jsonPath("$.counts.done").value(2)).andExpect(jsonPath("$.counts.percentage").value(66.7));
  }
+ @Test @WithMockUser("alex") void duplicateMembershipReportsConflictWithoutCreatingAnotherRow()throws Exception{
+  var p=project();var sam=projects.user("sam");var path="/api/projects/"+p+"/members";
+  mvc.perform(post(path).with(csrf()).contentType("application/json").content(body(Map.of("userId",sam))))
+      .andExpect(status().isNoContent());
+  mvc.perform(post(path).with(csrf()).contentType("application/json").content(body(Map.of("userId",sam))))
+      .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value("This user is already a project member."));
+  assertEquals(1L,db.jdbc.queryForObject("select count(*) from project_member where project_id=? and user_id=?",Long.class,p,sam));
+ }
  @Test @WithMockUser("alex") void projectAndTaskResponsesMatchTheOpenApiFields()throws Exception{
   var schemas=json.readTree(java.nio.file.Path.of("openapi.yaml").toFile()).at("/components/schemas");
   var project=project();

@@ -17,7 +17,12 @@ public class ProjectService {
  @Transactional public Map<String,Object> update(UUID project,UUID user,String name,String description,Long version){manager(project,user);version(version);changed(db.jdbc.update("update project set name=?,description=?,version=version+1 where id=? and version=?",text(name,"name",100,true),text(description,"description",1000,false),project,version));return access(project,user);}
  @Transactional public void delete(UUID project,UUID user,long version){manager(project,user);version(version);changed(db.jdbc.update("delete from project where id=? and version=?",project,version));}
  public List<Map<String,Object>> members(UUID project,UUID user){access(project,user);return db.rows("select u.id,u.username,u.display_name from app_user u join project_member m on m.user_id=u.id where m.project_id=? order by u.username",project);}
- @Transactional public void addMember(UUID project,UUID user,UUID member){manager(project,user);if(db.rows("select id from app_user where id=?",member).isEmpty())throw new Failure(400,"User does not exist.");db.jdbc.update("insert into project_member values(?,?) on conflict do nothing",project,member);}
+ @Transactional public void addMember(UUID project,UUID user,UUID member){
+  manager(project,user);
+  if(db.rows("select id from app_user where id=?",member).isEmpty())throw new Failure(400,"User does not exist.");
+  int inserted=db.jdbc.update("insert into project_member values(?,?) on conflict do nothing",project,member);
+  if(inserted==0)throw new Failure(409,"This user is already a project member.");
+ }
  public record TaskCounts(long todo, @com.fasterxml.jackson.annotation.JsonProperty("in_progress") long inProgress,
                           long done,long total,double percentage){}
  private static final String COUNTS_SQL="""

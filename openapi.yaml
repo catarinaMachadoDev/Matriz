@@ -498,7 +498,14 @@
             "$ref": "#/components/responses/R404"
           },
           "409": {
-            "$ref": "#/components/responses/R409"
+            "description": "User is already a project member or a relationship changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
