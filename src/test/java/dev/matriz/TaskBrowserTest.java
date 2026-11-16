@@ -51,4 +51,79 @@ class TaskBrowserTest {
             jdbc.update("delete from project where name = ?", project);
         }
     }
+    @Test
+    void delayedProjectResponseCannotReplaceTheCurrentProject() {
+        String alphaName = "Async Alpha " + UUID.randomUUID();
+        String betaName = "Async Beta " + UUID.randomUUID();
+        UUID alpha = seedProject(alphaName);
+        UUID beta = seedProject(betaName);
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch()) {
+            Page page = browser.newPage();
+            signIn(page);
+            var delayed = new java.util.concurrent.atomic.AtomicReference<Route>();
+            page.route("**/api/projects/" + alpha + "/eligible-users", delayed::set);
+            page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(java.util.regex.Pattern.compile(alphaName))).click();
+            page.waitForCondition(() -> delayed.get() != null);
+            page.evaluate("hash => location.hash = hash", "#/projects/" + beta);
+            assertThat(heading(page, betaName)).isVisible();
+            page.waitForResponse(response -> response.url().endsWith("/" + alpha + "/eligible-users"),
+                () -> delayed.get().fulfill(new Route.FulfillOptions().setStatus(200).setContentType("application/json").setBody("[]")));
+            page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
+            assertThat(heading(page, betaName)).isVisible();
+            page.getByLabel("Title").fill("Task for Beta");
+            page.getByLabel("Description *", new Page.GetByLabelOptions().setExact(true)).fill("Beta details");
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create task")).click();
+            assertThat(heading(page, "Task for Beta")).isVisible();
+            org.junit.jupiter.api.Assertions.assertEquals(beta, jdbc.queryForObject(
+                "select project_id from task where project_id in (?,?) and title=?", UUID.class, alpha, beta, "Task for Beta"));
+        } finally {
+            jdbc.update("delete from project where id in (?,?)", alpha, beta);
+        }
+    }
+
+    @Test
+    void postingACommentPreservesTheUnsavedTaskEdit() {
+        UUID project = seedProject("Draft project " + UUID.randomUUID());
+        UUID task = UUID.randomUUID();
+        jdbc.update("insert into task(id,project_id,title,description) values(?,?,?,?)", task, project, "Original title", "Details");
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch()) {
+            Page page = browser.newPage();
+            signIn(page);
+            page.evaluate("hash => location.hash = hash", "#/projects/" + project + "/tasks/" + task);
+            page.getByLabel("Title").fill("Draft title");
+            page.getByLabel("Add a comment").fill("A separate comment");
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Post comment")).click();
+            assertThat(page.getByText("A separate comment")).isVisible();
+            assertThat(page.getByLabel("Title")).hasValue("Draft title");
+            assertThat(heading(page, "Original title")).isVisible();
+        } finally {
+            jdbc.update("delete from project where id=?", project);
+        }
+    }
+
+    private UUID seedProject(String name) {
+        UUID id = UUID.randomUUID();
+        UUID manager = jdbc.queryForObject("select id from app_user where username=?", UUID.class, "alex");
+        jdbc.update("insert into project(id,name,manager_id) values(?,?,?)", id, name, manager);
+        jdbc.update("insert into project_member(project_id,user_id) values(?,?)", id, manager);
+        return id;
+    }
+
+    private void signIn(Page page) {
+        page.navigate("http://127.0.0.1:" + port);
+        enterCredentials(page);
+        assertThat(heading(page, "Good work starts here.")).isVisible();
+    }
+
+    private static void enterCredentials(Page page) {
+        page.getByLabel("Username").fill("alex");
+        page.getByLabel("Password").fill("MatrizDemo!2026");
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
+    }
+
+    private static Locator heading(Page page, String name) {
+        return page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setName(name).setExact(true));
+    }
 }
