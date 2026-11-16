@@ -12,7 +12,7 @@ Verified locally on November 15, 2026 with Java 21, Maven Wrapper 3.9.16, Postgr
 | Authorization with real sessions | Alex created a task through the Compose API. Taylor signed in to a separate session and received 404 on both read and update. The task retained its original data. |
 | Persistence | After both containers were recreated, Alex signed in again and read back the same task from the PostgreSQL volume. The disposable Compose project was then removed. |
 | Local delivery review | OpenAPI parsed with 21 operations, required path parameters, and 122 resolving references. Environment and local credential files are ignored and excluded from the container context. |
-| GitHub Actions | Workflow configured for push and pull requests. Hosted execution, controlled failure, and final run URL await an approved push and repository access. |
+| GitHub Actions | Workflow configured for push and pull requests. Hosted run [43774443610](https://github.com/catarinaMachadoDev/Matriz/actions/runs/43774443610) passed all 13 tests and built the image for commit 92ddfdf. CI now also defines a database-backed container smoke test. |
 
 ## Reproduce
 
@@ -28,4 +28,4 @@ Follow the Java and Docker prerequisites in the [README](../README.md). Use the 
 
 The owner chose Java/Spring Boot with PostgreSQL and approved the expanded MVP and existing validation limits. AI translated those decisions into scoped tests, including the title boundary. The proposed browser locator was corrected after Chromium found two matching fields. AI prepared a single application container and a PostgreSQL service, and Compose health, access, and persistence checks confirmed the configuration locally.
 
-See the [quality and security review](quality-security-review.md). The final commit reference and hosted CI evidence are pending approval and execution.
+See the [quality and security review](quality-security-review.md). The hosted run above records the verified baseline. Subsequent changes need their own run before delivery.

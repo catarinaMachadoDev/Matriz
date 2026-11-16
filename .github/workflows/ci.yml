@@ -35,3 +35,14 @@ jobs:
         run: sh ./mvnw -B verify
       - name: Build application image
         run: docker build -t matriz:ci .
+      - name: Smoke-test application image
+        env:
+          MATRIZ_DB_URL: jdbc:postgresql://127.0.0.1:5432/matriz_test
+          MATRIZ_BIND_ADDRESS: 0.0.0.0
+        run: |
+          docker run --detach --name matriz-smoke --network host \
+            --env MATRIZ_DB_URL --env MATRIZ_DB_USER --env MATRIZ_DB_PASSWORD \
+            --env MATRIZ_BIND_ADDRESS --env MATRIZ_PORT=18080 matriz:ci
+          trap 'docker logs matriz-smoke; docker rm -f matriz-smoke' EXIT
+          curl --fail --silent --show-error --retry 30 --retry-delay 2 \
+            --retry-connrefused --max-time 5 http://127.0.0.1:18080/ready

@@ -106,6 +106,9 @@ class MatrizIntegrationTest {
   actual.fieldNames().forEachRemaining(actualFields::add);
   assertEquals(expectedFields,actualFields);
  }
+ @Test void readinessChecksTheDatabaseWithoutAuthentication()throws Exception{
+  mvc.perform(get("/ready")).andExpect(status().isNoContent());
+ }
  @Test void authenticationCsrfAndLogout()throws Exception{
   mvc.perform(get("/api/projects")).andExpect(status().isUnauthorized());
   mvc.perform(post("/api/auth/login").contentType("application/json").content(body(Map.of("username","alex","password","MatrizDemo!2026")))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_INVALID"));

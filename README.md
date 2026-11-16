@@ -14,7 +14,7 @@ docker compose up -d --build --wait
 docker compose ps
 ```
 
-Open http://localhost:8081. Change `MATRIZ_HTTP_PORT` in .env if that port is occupied. Compose publishes the app on loopback and keeps PostgreSQL on its internal network. The Compose development setup uses HTTP cookies. A named volume preserves records across `docker compose down` and subsequent startup. Use `docker compose logs --tail=50` to diagnose startup.
+Open http://localhost:8081. Change `MATRIZ_HTTP_PORT` in .env if that port is occupied. Compose publishes the app on loopback and keeps PostgreSQL on its internal network. The Compose development setup uses HTTP cookies. The Compose health check queries PostgreSQL through /ready. A named volume preserves records across `docker compose down` and subsequent startup. Use `docker compose logs --tail=50` to diagnose startup.
 
 When demo seeding is enabled, use the fictional accounts `alex`, `sam`, or `taylor` with the shared demonstration password `MatrizDemo!2026`. Alex manages Website launch, Sam is a member, and Taylor manages a separate project. Seeding runs once per database. Keep demo seeding disabled on any shared deployment.
 
