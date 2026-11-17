@@ -100,6 +100,142 @@ class MatrizIntegrationTest {
   assertFields(projectSchema,projectBody);
   assertFields(projectSchema.at("/counts/properties"),projectBody.get("counts"));
  }
+
+ @org.junit.jupiter.params.ParameterizedTest(name="{0} {1}")
+ @org.junit.jupiter.params.provider.CsvSource({
+     "GET, /", "PUT, /", "DELETE, /", "GET, /members", "POST, /members", "GET, /eligible-users",
+     "GET, /tasks", "POST, /tasks", "GET, /tasks/{task}", "PUT, /tasks/{task}", "DELETE, /tasks/{task}",
+     "POST, /tasks/{task}/assignees", "DELETE, /tasks/{task}/assignees/{user}",
+     "GET, /tasks/{task}/comments", "POST, /tasks/{task}/comments"
+ })
+ void protectedRoutesRequireMembership(String method, String suffix) throws Exception {
+  UUID p=project();
+  UUID t=(UUID)tasks.create(p,catarina(),"Protected task","Details").get("id");
+  UUID outsider=projects.user("taylor");
+  var fullPath="/api/projects/"+p+(suffix.equals("/")?"":suffix.replace("{task}",t.toString())
+      .replace("{user}",outsider.toString()));
+  var request=request(org.springframework.http.HttpMethod.valueOf(method),fullPath).with(csrf())
+      .param("version","0").contentType("application/json").content(body(Map.of(
+        "name","Project name","title","Task title","description","Details","userId",outsider,
+        "status","todo","priority","medium","content","Comment","version",0)));
+  mvc.perform(request).andExpect(status().isUnauthorized());
+  request.with(user("taylor"));
+  mvc.perform(request).andExpect(status().isNotFound())
+      .andExpect(jsonPath("$.message").value("Resource not found."));
+  assertEquals("Protected task",db.jdbc.queryForObject("select title from task where id=?",String.class,t));
+ }
+
+ @org.junit.jupiter.params.ParameterizedTest(name="{0} {1}")
+ @org.junit.jupiter.params.provider.CsvSource({"PUT, /", "DELETE, /", "GET, /eligible-users", "POST, /members"})
+ @WithMockUser("sam")
+ void projectManagementRequiresTheProjectManager(String method, String suffix) throws Exception {
+  UUID p=project();
+  projects.addMember(p,catarina(),projects.user("sam"));
+  String path="/api/projects/"+p+(suffix.equals("/")?"":suffix);
+  mvc.perform(request(org.springframework.http.HttpMethod.valueOf(method),path).with(csrf())
+       .param("version","0").contentType("application/json")
+       .content(body(Map.of("name","Changed","version",0,"userId",projects.user("taylor")))))
+      .andExpect(status().isForbidden());
+  assertEquals("Test project",db.jdbc.queryForObject("select name from project where id=?",String.class,p));
+  assertEquals(2L,db.jdbc.queryForObject("select count(*) from project_member where project_id=?",Long.class,p));
+ }
+
+ @Test @WithMockUser("sam")
+ void memberSeesProjectsFromDifferentManagersAndSearchTreatsWildcardsLiterally()throws Exception{
+  UUID first=(UUID)projects.create(catarina(),"Test %_! launch","").get("id");
+  UUID taylor=projects.user("taylor");
+  UUID second=(UUID)projects.create(taylor,"Test second launch","").get("id");
+  UUID privateProject=(UUID)projects.create(taylor,"Test private launch","").get("id");
+  projects.addMember(first,catarina(),projects.user("sam"));
+  projects.addMember(second,taylor,projects.user("sam"));
+
+  var all=json.readTree(mvc.perform(get("/api/projects").param("search","  TeSt  "))
+      .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2))
+      .andReturn().getResponse().getContentAsString());
+  Set<String> ids=new HashSet<>();
+  all.get("items").forEach(item->ids.add(item.get("id").asText()));
+  assertEquals(Set.of(first.toString(),second.toString()),ids);
+  mvc.perform(get("/api/projects/"+privateProject)).andExpect(status().isNotFound());
+  mvc.perform(get("/api/projects").param("search","%_!").param("limit","1"))
+      .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1))
+      .andExpect(jsonPath("$.items[0].id").value(first.toString()))
+      .andExpect(jsonPath("$.items[0].counts.percentage").value(0));
+  mvc.perform(get("/api/projects").param("search","Test").param("limit","1").param("offset","2"))
+      .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(2))
+      .andExpect(jsonPath("$.items").isEmpty());
+ }
+
+ @Test @WithMockUser("catarina")
+ void projectCrudValidatesVersionsAndCascadesMemberships()throws Exception{
+  var created=mvc.perform(post("/api/projects").with(csrf()).contentType("application/json")
+       .content(body(Map.of("name","  Manager project  "))))
+      .andExpect(status().isCreated()).andExpect(jsonPath("$.name").value("Manager project"))
+      .andExpect(jsonPath("$.description").value("")).andReturn();
+  String path="/api/projects/"+json.readTree(created.getResponse().getContentAsString()).get("id").asText();
+  mvc.perform(get(path+"/members")).andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].username").value("catarina"));
+  mvc.perform(put(path).with(csrf()).contentType("application/json")
+       .content(body(Map.of("name","Renamed","description"," Updated ","version",0))))
+      .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+  mvc.perform(delete(path).with(csrf()).param("version","0")).andExpect(status().isConflict());
+  mvc.perform(get(path)).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Renamed"))
+      .andExpect(jsonPath("$.description").value("Updated"));
+  mvc.perform(delete(path).with(csrf()).param("version","1")).andExpect(status().isNoContent());
+  mvc.perform(get(path+"/members")).andExpect(status().isNotFound());
+ }
+
+ @Test @WithMockUser("sam")
+ void memberCanReopenAndDeleteTaskAndAllItsCollaborationData()throws Exception{
+  UUID p=project();
+  UUID member=projects.user("sam");
+  projects.addMember(p,catarina(),member);
+  UUID t=(UUID)tasks.create(p,member,"Task","Details").get("id");
+  tasks.assign(p,member,t,member);
+  String path=base(p)+"/"+t;
+  mvc.perform(post(path+"/comments").with(csrf()).contentType("application/json")
+       .content(body(Map.of("content","  First comment  ","authorId",catarina()))))
+      .andExpect(status().isCreated()).andExpect(jsonPath("$.authorId").value(member.toString()));
+  mvc.perform(get(path+"/comments")).andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].content").value("First comment"))
+      .andExpect(jsonPath("$[0].authorName").value("Sam Lee"));
+  mvc.perform(put(path).with(csrf()).contentType("application/json")
+       .content(body(Map.of("title","Task","description","Details","status","done","priority","low","version",0))))
+      .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+  mvc.perform(put(path).with(csrf()).contentType("application/json")
+       .content(body(Map.of("title","Task","description","Details","status","in_progress","priority","high","version",1))))
+      .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
+  mvc.perform(get("/api/projects/"+p)).andExpect(jsonPath("$.counts.done").value(0))
+      .andExpect(jsonPath("$.counts.in_progress").value(1));
+  mvc.perform(delete(path).with(csrf()).param("version","1")).andExpect(status().isConflict());
+  mvc.perform(delete(path).with(csrf()).param("version","2")).andExpect(status().isNoContent());
+  mvc.perform(get(path+"/comments")).andExpect(status().isNotFound());
+  assertEquals(0L,db.jdbc.queryForObject("select count(*) from task_comment where task_id=?",Long.class,t));
+  assertEquals(0L,db.jdbc.queryForObject("select count(*) from task_assignee where task_id=?",Long.class,t));
+ }
+
+ @Test @WithMockUser("catarina")
+ void rejectsInvalidOptionsAndDoesNotPersistInvalidWrites()throws Exception{
+  UUID p=project();
+  UUID t=(UUID)tasks.create(p,catarina(),"Task","Details").get("id");
+  String path=base(p)+"/"+t;
+  mvc.perform(get(base(p)).param("status","closed")).andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.fields.status").exists());
+  mvc.perform(get(base(p)).param("priority","urgent")).andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.fields.priority").exists());
+  mvc.perform(get(base(p)).param("limit","101")).andExpect(status().isBadRequest());
+  mvc.perform(get("/api/projects").param("offset","-1")).andExpect(status().isBadRequest());
+  mvc.perform(post(path+"/comments").with(csrf()).contentType("application/json")
+       .content(body(Map.of("content","x".repeat(2001))))).andExpect(status().isBadRequest());
+  mvc.perform(put(path).with(csrf()).contentType("application/json")
+       .content(body(Map.of("title","Task","description","Details","status","done","priority","medium"))))
+      .andExpect(status().isBadRequest());
+  mvc.perform(post(base(p)).with(csrf()).contentType("application/json")
+       .content(body(Map.of("title","A\0B","description","Details"))))
+      .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fields.title").exists());
+  mvc.perform(get(path)).andExpect(jsonPath("$.version").value(0));
+  assertEquals(0L,db.jdbc.queryForObject("select count(*) from task_comment where task_id=?",Long.class,t));
+ }
+
  private static void assertFields(com.fasterxml.jackson.databind.JsonNode documented,com.fasterxml.jackson.databind.JsonNode actual){
   Set<String> expectedFields=new HashSet<>(), actualFields=new HashSet<>();
   documented.fieldNames().forEachRemaining(expectedFields::add);

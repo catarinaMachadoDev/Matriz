@@ -11,4 +11,21 @@
 | Member updates project settings | API rejects manager-only changes while allowing task creation | PostgreSQL integration, MatrizIntegrationTest |
 | Sign in, open a project, create a task, return to the list | Task title appears in the rendered project list | Java Playwright, TaskBrowserTest |
 
-Prioritize requirements visible to users and permission boundaries. Unit tests isolate title validation. API tests verify saved behavior and rollback fixtures. Browser tests use a random port, a dedicated database, unique project names, and scoped cleanup. Locators use accessible names and assertions wait for rendered results. See [verification results](verification.md).
+## Regression and sanity coverage
+
+| Level | Automated coverage |
+| --- | --- |
+| Unit | Required and optional text boundaries, trimming, NUL rejection, UUID format, status values, pagination, versions and conflict detection. |
+| MVC component | Task controller request binding and defaults, validation and conflict response mapping, and the public task response shape. The service is mocked. |
+| PostgreSQL integration | Authentication and CSRF, private project routes, manager-only operations, membership across managers, literal search, pagination, OpenAPI fields, project and task CRUD, reopening, progress, assignments, comments and cascade deletion. |
+| Browser regression | Task visibility with active filters and pagination, response ordering during navigation, session expiry and account switching, and task draft preservation. |
+| Browser sanity | Readiness, sign-in, create a task, confirm it survives a reload, sign out, and confirm the session can no longer access the API. |
+
+The sanity test uses the same dedicated PostgreSQL database and Chromium setup as the full suite. From the repository root, run it on Windows with:
+
+```powershell
+$env:MATRIZ_E2E = 'true'
+.\mvnw.cmd -B '-Dgroups=sanity' test
+```
+
+Run all levels with `.\mvnw.cmd -B verify` and `MATRIZ_E2E=true`. API tests verify saved behavior and rollback fixtures. Browser tests use a random port, a dedicated database, unique project names, and scoped cleanup. Locators use accessible names and assertions wait for rendered results. See [verification results](verification.md).

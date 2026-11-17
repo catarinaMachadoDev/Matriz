@@ -146,6 +146,37 @@ class TaskBrowserTest {
         }
     }
 
+
+    @Test
+    @org.junit.jupiter.api.Tag("sanity")
+    void browserSanityChecksReadinessSignInTaskCreationAndSignOut() {
+        String name = "Sanity project " + UUID.randomUUID();
+        UUID project = seedProject(name);
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch()) {
+            Page page = browser.newPage();
+            var readiness = page.request().get("http://127.0.0.1:" + port + "/ready");
+            org.junit.jupiter.api.Assertions.assertEquals(204, readiness.status());
+            signIn(page);
+
+            page.evaluate("hash => location.hash = hash", "#/projects/" + project);
+            assertThat(heading(page, name)).isVisible();
+            String title = "Sanity check task";
+            page.getByLabel("Title").fill(title);
+            page.getByLabel("Description *", new Page.GetByLabelOptions().setExact(true)).fill("Saved using the browser");
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create task")).click();
+            assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(title))).isVisible();
+            page.reload();
+            assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(title))).isVisible();
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign out")).click();
+            assertThat(page.getByLabel("Username")).isVisible();
+            org.junit.jupiter.api.Assertions.assertEquals(401,
+                page.request().get("http://127.0.0.1:" + port + "/api/auth/me").status());
+        } finally {
+            jdbc.update("delete from project where id=?", project);
+        }
+    }
+
     private UUID seedProject(String name) {
         UUID id = UUID.randomUUID();
         UUID manager = jdbc.queryForObject("select id from app_user where username=?", UUID.class, "catarina");
