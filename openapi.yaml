@@ -556,6 +556,7 @@
     },
     "/api/projects/{projectId}/tasks": {
       "get": {
+        "description": "List tasks, newest first. Existing tasks without historical creation timestamps use migration time and a stable ID tie-breaker.",
         "operationId": "listTasks",
         "parameters": [
           {

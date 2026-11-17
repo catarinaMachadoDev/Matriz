@@ -41,12 +41,28 @@ class TaskBrowserTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create project")).click();
             assertThat(page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setName(project))).isVisible();
 
+            UUID projectId = jdbc.queryForObject("select id from project where name=?", UUID.class, project);
+            jdbc.update("""
+                insert into task(id,project_id,title,description,status,created_at)
+                select gen_random_uuid(), ?, 'Earlier task ' || n, 'Details', 'done',
+                       current_timestamp - interval '1 day'
+                from generate_series(1,21) n
+                """, projectId);
+            page.getByLabel("Status", new Page.GetByLabelOptions().setExact(true)).selectOption("done");
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Apply filters")).click();
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Next")).click();
+            assertThat(page.getByText("21–21 of 21")).isVisible();
+
             page.getByLabel("Title").fill(title);
             page.getByLabel("Description *", new Page.GetByLabelOptions().setExact(true)).fill("Created through the browser.");
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create task")).click();
-            assertThat(page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setName(title))).isVisible();
-            page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(project)).click();
-            assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(title))).isVisible();
+            assertThat(page.getByText("Task created.")).isVisible();
+            assertThat(page.getByLabel("Status", new Page.GetByLabelOptions().setExact(true))).hasValue("");
+            assertThat(page.locator(".task-row a").first()).hasText(title);
+            page.reload();
+            assertThat(page.locator(".task-row a").first()).hasText(title);
+            page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(title).setExact(true)).click();
+            assertThat(heading(page, title)).isVisible();
         } finally {
             jdbc.update("delete from project where name = ?", project);
         }
@@ -74,7 +90,7 @@ class TaskBrowserTest {
             page.getByLabel("Title").fill("Task for Beta");
             page.getByLabel("Description *", new Page.GetByLabelOptions().setExact(true)).fill("Beta details");
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create task")).click();
-            assertThat(heading(page, "Task for Beta")).isVisible();
+            assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Task for Beta").setExact(true))).isVisible();
             org.junit.jupiter.api.Assertions.assertEquals(beta, jdbc.queryForObject(
                 "select project_id from task where project_id in (?,?) and title=?", UUID.class, alpha, beta, "Task for Beta"));
         } finally {

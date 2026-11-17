@@ -92,7 +92,15 @@ document.addEventListener('submit',async event=>{const form=event.target.closest
  case 'project-create':{const p=await api('/projects','POST',data);notice('Project created.');if(seq===rendering)location.hash='#/projects/'+p.id;return;}
  case 'project-edit':await api(base,'PUT',{name:data.editName,description:data.editDescription,version:project.version});notice('Project updated.');break;
  case 'member':await api(base+'/members','POST',data);notice('Member added.');break;
- case 'task-create':{const t=await api(base+'/tasks','POST',data);notice('Task created.');if(seq===rendering)location.hash='#'+base+'/tasks/'+t.id;return;}
+ case 'task-create':
+  await api(base+'/tasks','POST',data);
+  form.reset();
+  notice('Task created.');
+  if(seq===rendering){
+    state.status='';state.priority='';state.offset=0;
+    await render();
+  }
+  return;
  case 'task-edit':await api(taskPath,'PUT',{...data,version:task.version});notice('Task updated.');break;
  case 'assign':await api(taskPath+'/assignees','POST',data);notice('Member assigned.');if(seq===rendering)await refreshTaskWithDraft();return;
  case 'comment':await api(taskPath+'/comments','POST',data);notice('Comment posted.');if(seq===rendering)await refreshTaskWithDraft();return;

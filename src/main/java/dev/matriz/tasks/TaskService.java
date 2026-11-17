@@ -28,7 +28,7 @@ public class TaskService {
   long count=db.jdbc.queryForObject("select count(*) from task"+where,Long.class,args.toArray());
   args.add(limit);
   args.add(offset);
-  var rows=db.rows("select * from task"+where+" order by id limit ? offset ?",args.toArray());
+  var rows=db.rows("select * from task"+where+" order by created_at desc, id desc limit ? offset ?",args.toArray());
   Map<Object,List<Map<String,Object>>> assignees=new HashMap<>();
   if(!rows.isEmpty()){
    String slots=String.join(",",Collections.nCopies(rows.size(),"?"));
