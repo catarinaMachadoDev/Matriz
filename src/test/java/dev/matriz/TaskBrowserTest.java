@@ -111,6 +111,15 @@ class TaskBrowserTest {
             assertThat(page.getByLabel("Username")).isVisible();
             enterCredentials(page);
             assertThat(heading(page, name)).isVisible();
+
+            page.context().clearCookies();
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign out")).click();
+            assertThat(page.getByLabel("Username")).isVisible();
+            page.getByLabel("Username").fill("sam");
+            page.getByLabel("Password").fill("MatrizDemo!2026");
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
+            assertThat(page.locator("#identity")).containsText("Sam Lee");
+            assertThat(heading(page, "Good work starts here.")).isVisible();
         } finally {
             jdbc.update("delete from project where id=?", project);
         }

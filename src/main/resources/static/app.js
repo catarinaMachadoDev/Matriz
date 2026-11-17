@@ -106,6 +106,16 @@ document.addEventListener('submit',async event=>{const form=event.target.closest
  case 'comment':await api(taskPath+'/comments','POST',data);notice('Comment posted.');if(seq===rendering)await refreshTaskWithDraft();return;
  }if(seq===rendering)await render();
  }catch(e){if(kind==='login'&&error)error.textContent=e.message;else actionError(e,error);}finally{buttons.forEach(b=>b.disabled=false);}});
-document.addEventListener('click',async event=>{const b=event.target.closest('button[data-action],button[data-page]');if(!b)return;b.disabled=true;try{if(b.dataset.page){state[b.dataset.page]=Math.max(0,state[b.dataset.page]+Number(b.dataset.delta));await render();return;}const seq=rendering;const {project,task}=view;const base=project?'/projects/'+project.id:'';switch(b.dataset.action){case 'logout':await api('/auth/logout','POST');state.user=null;state.csrf=null;location.hash='#/';await render();break;case 'refresh':await render();break;case 'delete-project':if(confirm('Delete this project and ALL its tasks, comments, assignments and memberships? This cannot be undone.')){await api(base+'?version='+project.version,'DELETE');notice('Project deleted.');if(seq===rendering)location.hash='#/';}break;case 'delete-task':if(confirm('Delete this task and all its comments and assignments? This cannot be undone.')){await api(base+'/tasks/'+task.id+'?version='+task.version,'DELETE');notice('Task deleted.');if(seq===rendering)location.hash='#'+base;}break;case 'unassign':await api(base+'/tasks/'+task.id+'/assignees/'+b.dataset.user,'DELETE');notice('Assignment removed.');if(seq===rendering)await refreshTaskWithDraft();break;}}catch(e){actionError(e);}finally{b.disabled=false;}});
+document.addEventListener('click',async event=>{const b=event.target.closest('button[data-action],button[data-page]');if(!b)return;b.disabled=true;try{if(b.dataset.page){state[b.dataset.page]=Math.max(0,state[b.dataset.page]+Number(b.dataset.delta));await render();return;}const seq=rendering;const {project,task}=view;const base=project?'/projects/'+project.id:'';switch(b.dataset.action){case 'logout':
+  try{
+    await api('/auth/logout','POST');
+  }catch(error){
+    if(error.status!==401)throw error;
+  }
+  state.user=null;state.csrf=null;
+  document.querySelector('#notice').textContent='';
+  location.hash='#/';
+  await render();
+  break;case 'refresh':await render();break;case 'delete-project':if(confirm('Delete this project and ALL its tasks, comments, assignments and memberships? This cannot be undone.')){await api(base+'?version='+project.version,'DELETE');notice('Project deleted.');if(seq===rendering)location.hash='#/';}break;case 'delete-task':if(confirm('Delete this task and all its comments and assignments? This cannot be undone.')){await api(base+'/tasks/'+task.id+'?version='+task.version,'DELETE');notice('Task deleted.');if(seq===rendering)location.hash='#'+base;}break;case 'unassign':await api(base+'/tasks/'+task.id+'/assignees/'+b.dataset.user,'DELETE');notice('Assignment removed.');if(seq===rendering)await refreshTaskWithDraft();break;}}catch(e){actionError(e);}finally{b.disabled=false;}});
 window.addEventListener('hashchange',()=>{state.offset=0;render();});
 (async()=>{try{await token();state.user=await api('/auth/me');}catch(e){if(e.status!==401)notice(e.message);}await render();})();
