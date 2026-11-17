@@ -34,7 +34,7 @@ class TaskBrowserTest {
              Browser browser = playwright.chromium().launch()) {
             Page page = browser.newPage();
             page.navigate("http://127.0.0.1:" + port);
-            page.getByLabel("Username").fill("alex");
+            page.getByLabel("Username").fill("catarina");
             page.getByLabel("Password").fill("MatrizDemo!2026");
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
             page.getByLabel("Project name").fill(project);
@@ -148,7 +148,7 @@ class TaskBrowserTest {
 
     private UUID seedProject(String name) {
         UUID id = UUID.randomUUID();
-        UUID manager = jdbc.queryForObject("select id from app_user where username=?", UUID.class, "alex");
+        UUID manager = jdbc.queryForObject("select id from app_user where username=?", UUID.class, "catarina");
         jdbc.update("insert into project(id,name,manager_id) values(?,?,?)", id, name, manager);
         jdbc.update("insert into project_member(project_id,user_id) values(?,?)", id, manager);
         return id;
@@ -161,7 +161,7 @@ class TaskBrowserTest {
     }
 
     private static void enterCredentials(Page page) {
-        page.getByLabel("Username").fill("alex");
+        page.getByLabel("Username").fill("catarina");
         page.getByLabel("Password").fill("MatrizDemo!2026");
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
     }

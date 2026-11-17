@@ -15,11 +15,11 @@ public class DemoSeed implements ApplicationRunner {
   // Seed once only. Restart never recreates deleted demo records or resets passwords.
   db.jdbc.execute("create table if not exists demo_seed_marker (id integer primary key)");
   if(db.jdbc.update("insert into demo_seed_marker values(1) on conflict do nothing")==0)return;
-  UUID alex=UUID.randomUUID(),sam=UUID.randomUUID(),taylor=UUID.randomUUID();
-  for(Object[] u:new Object[][]{{alex,"alex","Alex Morgan"},{sam,"sam","Sam Lee"},{taylor,"taylor","Taylor Reed"}})db.jdbc.update("insert into app_user values(?,?,?,?)",u[0],u[1],u[2],encoder.encode("MatrizDemo!2026"));
+  UUID catarina=UUID.randomUUID(),sam=UUID.randomUUID(),taylor=UUID.randomUUID();
+  for(Object[] u:new Object[][]{{catarina,"catarina","Catarina"},{sam,"sam","Sam Lee"},{taylor,"taylor","Taylor Reed"}})db.jdbc.update("insert into app_user values(?,?,?,?)",u[0],u[1],u[2],encoder.encode("MatrizDemo!2026"));
   UUID shared=UUID.randomUUID(),privateProject=UUID.randomUUID();
-  db.jdbc.update("insert into project(id,name,description,manager_id) values(?,?,?,?)",shared,"Website launch","Coordinate the fictional website launch.",alex);
-  db.jdbc.update("insert into project_member values(?,?),(?,?)",shared,alex,shared,sam);
+  db.jdbc.update("insert into project(id,name,description,manager_id) values(?,?,?,?)",shared,"Website launch","Coordinate the fictional website launch.",catarina);
+  db.jdbc.update("insert into project_member values(?,?),(?,?)",shared,catarina,shared,sam);
   db.jdbc.update("insert into project(id,name,description,manager_id) values(?,?,?,?)",privateProject,"Private planning","Only Taylor can access this demo project.",taylor);
   db.jdbc.update("insert into project_member values(?,?)",privateProject,taylor);
   String[] titles={"Review project scope","Draft homepage copy","Review wireframe","Prepare launch checklist"};String[] states={"done","done","in_progress","todo"};
