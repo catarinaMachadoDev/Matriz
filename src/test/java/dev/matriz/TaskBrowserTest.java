@@ -106,13 +106,15 @@ class TaskBrowserTest {
              Browser browser = playwright.chromium().launch()) {
             Page page = browser.newPage();
             signIn(page);
+            search(page, name);
             page.context().clearCookies();
             page.evaluate("hash => location.hash = hash", "#/projects/" + project);
             assertThat(page.getByLabel("Username")).isVisible();
             enterCredentials(page);
             assertThat(heading(page, name)).isVisible();
-
-            page.context().clearCookies();
+            page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("All projects")).click();
+            assertThat(page.getByLabel("Find a project")).hasValue("");
+            search(page, name);
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign out")).click();
             assertThat(page.getByLabel("Username")).isVisible();
             page.getByLabel("Username").fill("sam");
@@ -120,6 +122,7 @@ class TaskBrowserTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
             assertThat(page.locator("#identity")).containsText("Sam Lee");
             assertThat(heading(page, "Good work starts here.")).isVisible();
+            assertThat(page.getByLabel("Find a project")).hasValue("");
         } finally {
             jdbc.update("delete from project where id=?", project);
         }
@@ -193,6 +196,12 @@ class TaskBrowserTest {
         } finally {
             jdbc.update("delete from project where id=?", project);
         }
+    }
+
+    private static void search(Page page, String name) {
+        page.getByLabel("Find a project").fill(name);
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Search").setExact(true)).click();
+        assertThat(page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setName(name))).isVisible();
     }
 
     private UUID seedProject(String name) {

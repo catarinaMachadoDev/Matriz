@@ -1,29 +1,54 @@
 'use strict';
 const app=document.querySelector('#app'),identity=document.querySelector('#identity');
-const state={user:null,csrf:null,search:'',status:'',priority:'',offset:0,projectOffset:0};
+const sessionDefaults={user:null,csrf:null,search:'',status:'',priority:'',offset:0,projectOffset:0};
+const state={...sessionDefaults};
+let sessionGeneration=0;
+function ensureCurrentSession(generation){
+  if(generation!==sessionGeneration)throw new DOMException('Session ended.','AbortError');
+}
+function endSession(){
+  sessionGeneration++;
+  rendering++;
+  view={};
+  Object.assign(state,sessionDefaults);
+  document.querySelector('#notice').textContent='';
+  login();
+}
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const label=x=>({todo:'To do',in_progress:'In progress',done:'Done',low:'Low',medium:'Medium',high:'High'}[x]||x);
 const badge=x=>`<span class="badge ${esc(x)}">${esc(label(x))}</span>`;
 const options=(values,current)=>values.map(v=>`<option value="${esc(v)}" ${v===current?'selected':''}>${esc(label(v))}</option>`).join('');
 const field=(name,title,value='',max=120,required=true,area=false)=>`<label for="${name}">${title}${required?' *':''}</label><${area?'textarea':'input'} id="${name}" name="${name}" maxlength="${max}" ${required?'required':''}${area?'':` value="${esc(value)}"`}>${area?esc(value)+'</textarea>':''}`;
 function notice(text){const n=document.querySelector('#notice');n.textContent=text;setTimeout(()=>{if(n.textContent===text)n.textContent='';},5000);}
-async function token(){const r=await fetch('/api/auth/csrf',{credentials:'same-origin'});if(!r.ok)throw Error('Unable to establish a session.');state.csrf=(await r.json()).token;}
+async function token(){
+  const generation=sessionGeneration;
+  const r=await fetch('/api/auth/csrf',{credentials:'same-origin'});
+  if(!r.ok)throw Error('Unable to establish a session.');
+  const {token:csrf}=await r.json();
+  ensureCurrentSession(generation);
+  state.csrf=csrf;
+}
 async function renewToken(path){
   if(path!='/auth/login'&&state.user){
     const current=await api('/auth/me');
-    if(current.id!==state.user.id)throw Error('The signed-in account changed. Reload before continuing.');
+    if(current.id!==state.user.id)throw Object.assign(Error('The signed-in account changed.'),{status:401});
   }
   await token();
 }
 async function api(path,method='GET',body,retryCsrf=true){
+  const generation=sessionGeneration;
   if(method!=='GET'&&!state.csrf)await renewToken(path);
+  ensureCurrentSession(generation);
   const r=await fetch('/api'+path,{method,credentials:'same-origin',headers:{'Content-Type':'application/json',...(method==='GET'?{}:{'X-CSRF-Token':state.csrf})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+  ensureCurrentSession(generation);
   if(r.status===204)return null;
   let data;
   try{data=await r.json();}catch{data={message:'The server could not complete the request.'};}
+  ensureCurrentSession(generation);
   if(r.status===403&&data.code==='CSRF_INVALID'&&retryCsrf){
     state.csrf=null;
     await renewToken(path);
+    ensureCurrentSession(generation);
     return api(path,method,body,false);
   }
   if(!r.ok){
@@ -72,6 +97,7 @@ async function refreshTaskWithDraft(){
   await task(project.id,current.id,++rendering,true);
 }
 function showCommentRefreshError(error,target){
+  if(!target.isConnected)return;
   if(error.status===401){actionError(error,target);return;}
   const retry=document.createElement('button');
   retry.type='button';
@@ -84,18 +110,16 @@ function showCommentRefreshError(error,target){
   target.replaceChildren('Comment saved. Unable to refresh the conversation. ',retry);
 }
 function actionError(error,target){
+  if(error.name==='AbortError')return;
   if(error.status===401){
-    const link=document.createElement('a');
-    link.href='/';link.target='_blank';link.rel='noopener';link.textContent='Sign in in a new tab';
-    const message=target||document.querySelector('#notice');
-    message.textContent='Your session expired. ';
-    message.append(link,', then retry this action.');
+    endSession();
+    notice('Your session expired. Sign in again.');
     return;
   }
   if(target)target.textContent=error.message+Object.entries(error.fields||{}).map(([key,value])=>'\n'+key+': '+value).join('');
   else notice(error.message);
 }
-async function render(){const seq=++rendering;view={};if(!state.user){login();return;}identity.innerHTML=`<span>${esc(state.user.displayName)}</span><button class="secondary" data-action="logout">Sign out</button>`;app.innerHTML='<p class="empty">Loading your workspace…</p>';try{const parts=location.hash.replace(/^#\/?/,'').split('/').filter(Boolean);if(parts[0]==='projects'&&parts[1]){if(parts[2]==='tasks'&&parts[3])await task(parts[1],parts[3],seq);else await project(parts[1],seq);}else await dashboard(seq);}catch(e){if(seq!==rendering)return;if(e.status===401){state.user=null;login();return;}app.innerHTML=`<section class="card"><h2>Unable to load this view</h2><p class="error">${esc(e.message)}</p><a class="button" href="#/">Back to projects</a> <button class="secondary" data-action="refresh">Try again</button></section>`;}}
+async function render(){const seq=++rendering;view={};if(!state.user){login();return;}identity.innerHTML=`<span>${esc(state.user.displayName)}</span><button class="secondary" data-action="logout">Sign out</button>`;app.innerHTML='<p class="empty">Loading your workspace…</p>';try{const parts=location.hash.replace(/^#\/?/,'').split('/').filter(Boolean);if(parts[0]==='projects'&&parts[1]){if(parts[2]==='tasks'&&parts[3])await task(parts[1],parts[3],seq);else await project(parts[1],seq);}else await dashboard(seq);}catch(e){if(seq!==rendering)return;if(e.status===401){actionError(e);return;}app.innerHTML=`<section class="card"><h2>Unable to load this view</h2><p class="error">${esc(e.message)}</p><a class="button" href="#/">Back to projects</a> <button class="secondary" data-action="refresh">Try again</button></section>`;}}
 document.addEventListener('submit',async event=>{const form=event.target.closest('[data-form]');if(!form)return;event.preventDefault();const data=Object.fromEntries(new FormData(form)),kind=form.dataset.form;const buttons=[...form.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);const error=form.querySelector('.error');if(error)error.textContent='';try{const seq=rendering;const {project,task}=view;const base=project?'/projects/'+project.id:'';const taskPath=task?base+'/tasks/'+task.id:'';
  switch(kind){case 'login':await token();state.user=await api('/auth/login','POST',data);await token();await render();return;
  case 'search':state.search=data.search;state.projectOffset=0;break;
@@ -134,10 +158,8 @@ document.addEventListener('click',async event=>{const b=event.target.closest('bu
   }catch(error){
     if(error.status!==401)throw error;
   }
-  state.user=null;state.csrf=null;
-  document.querySelector('#notice').textContent='';
+  endSession();
   location.hash='#/';
-  await render();
   break;case 'refresh':await render();break;case 'delete-project':if(confirm('Delete this project and ALL its tasks, comments, assignments and memberships? This cannot be undone.')){await api(base+'?version='+project.version,'DELETE');notice('Project deleted.');if(seq===rendering)location.hash='#/';}break;case 'delete-task':if(confirm('Delete this task and all its comments and assignments? This cannot be undone.')){await api(base+'/tasks/'+task.id+'?version='+task.version,'DELETE');notice('Task deleted.');if(seq===rendering)location.hash='#'+base;}break;case 'unassign':await api(base+'/tasks/'+task.id+'/assignees/'+b.dataset.user,'DELETE');notice('Assignment removed.');if(seq===rendering)await refreshTaskWithDraft();break;}}catch(e){actionError(e);}finally{b.disabled=false;}});
 window.addEventListener('hashchange',()=>{state.offset=0;render();});
 (async()=>{try{await token();state.user=await api('/auth/me');}catch(e){if(e.status!==401)notice(e.message);}await render();})();
