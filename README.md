@@ -45,7 +45,7 @@ $env:MATRIZ_E2E = 'true'
 .\mvnw.cmd -B verify
 ```
 
-On Linux, use `sh ./mvnw` and install Chromium with `install --with-deps chromium`. GitHub Actions uses a dedicated PostgreSQL service and builds the container image after tests pass.
+On Linux, install `unzip` before the first `sh ./mvnw` invocation so the wrapper can download and verify the pinned Maven ZIP. Install Chromium with `install --with-deps chromium`. GitHub Actions uses a dedicated PostgreSQL service and builds the container image after tests pass.
 
 ## Project documentation
 
