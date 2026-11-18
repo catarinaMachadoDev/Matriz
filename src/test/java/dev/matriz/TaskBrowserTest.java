@@ -262,6 +262,45 @@ class TaskBrowserTest {
         }
     }
 
+    @Test
+    void sharedSessionSwitchLoadsMemberProjectAndManagerCanDelete() {
+        String name = "Session deletion " + UUID.randomUUID();
+        UUID project = seedProject(name);
+        UUID sam = jdbc.queryForObject("select id from app_user where username='sam'", UUID.class);
+        jdbc.update("insert into project_member values(?,?)", project, sam);
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch();
+             BrowserContext context = browser.newContext()) {
+            Page first = context.newPage();
+            signIn(first);
+            Page second = context.newPage();
+            second.navigate("http://127.0.0.1:" + port);
+            second.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign out")).click();
+            second.getByLabel("Username").fill("sam");
+            second.getByLabel("Password").fill("MatrizDemo!2026");
+            second.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
+            assertThat(heading(second, "Good work starts here.")).isVisible();
+            first.evaluate("hash => location.hash = hash", "#/projects/" + project);
+            assertThat(heading(first, name)).isVisible();
+            assertThat(first.getByText("Project settings", new Page.GetByTextOptions().setExact(true))).hasCount(0);
+            first.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign out")).click();
+            enterCredentials(first);
+            assertThat(heading(first, "Good work starts here.")).isVisible();
+            first.evaluate("hash => location.hash = hash", "#/projects/" + project);
+            assertThat(heading(first, name)).isVisible();
+            first.getByText("Project settings", new Page.GetByTextOptions().setExact(true)).click();
+            first.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Delete project").setExact(true)).click();
+            first.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Cancel")).click();
+            first.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Delete project").setExact(true)).click();
+            first.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Confirm deletion")).click();
+            assertThat(heading(first, "Good work starts here.")).isVisible();
+            org.junit.jupiter.api.Assertions.assertEquals(0L, jdbc.queryForObject(
+                "select count(*) from project where id=?", Long.class, project));
+        } finally {
+            jdbc.update("delete from project where id=?", project);
+        }
+    }
+
     private static void search(Page page, String name) {
         page.getByLabel("Find a project").fill(name);
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Search").setExact(true)).click();
