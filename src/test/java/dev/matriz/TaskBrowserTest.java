@@ -227,6 +227,41 @@ class TaskBrowserTest {
         }
     }
 
+    @Test
+    void staleDeletionRequiresReviewAndFreshConfirmation() {
+        UUID project = seedProject("Deletion check " + UUID.randomUUID());
+        UUID task = UUID.randomUUID();
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch()) {
+            jdbc.update("insert into task(id,project_id,title,description) values(?,?,?,?)",
+                task, project, "Disposable task", "Before edit");
+            Page page = browser.newPage();
+            signIn(page);
+            page.evaluate("hash => location.hash = hash", "#/projects/" + project + "/tasks/" + task);
+            var delete = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Delete task").setExact(true));
+            var confirm = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Confirm deletion"));
+            delete.click();
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Cancel")).click();
+            assertThat(confirm).isHidden();
+            jdbc.update("update task set description=?,version=version+1 where id=?", "Changed elsewhere", task);
+            delete.click();
+            confirm.click();
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Review latest task")).click();
+            assertThat(page.getByLabel("Description *")).hasValue("Changed elsewhere");
+            assertThat(confirm).isHidden();
+            delete.click();
+            confirm.click();
+            assertThat(heading(page, "Tasks")).isVisible();
+            page.reload();
+            assertThat(heading(page, "Tasks")).isVisible();
+            assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Disposable task"))).hasCount(0);
+            org.junit.jupiter.api.Assertions.assertEquals(0L, jdbc.queryForObject(
+                "select count(*) from task where id=?", Long.class, task));
+        } finally {
+            jdbc.update("delete from project where id=?", project);
+        }
+    }
+
     private static void search(Page page, String name) {
         page.getByLabel("Find a project").fill(name);
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Search").setExact(true)).click();
