@@ -135,9 +135,27 @@ class TaskBrowserTest {
             Page page = browser.newPage();
             signIn(page);
             page.evaluate("hash => location.hash = hash", "#/projects/" + project + "/tasks/" + task);
-            page.getByLabel("Title").fill("Draft title");
-            page.getByLabel("Add a comment").fill("A separate comment");
+            assertThat(heading(page, "Original title")).isVisible();
+            String path = "**/api/projects/" + project + "/tasks/" + task + "/comments";
+            var delayed = new java.util.concurrent.atomic.AtomicReference<Route>();
+            page.route(path, route -> {
+                if (route.request().method().equals("GET")) delayed.set(route);
+                else route.resume();
+            });
+            var comment = page.getByLabel("Add a comment");
+            comment.fill("A separate comment");
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Post comment")).click();
+            page.waitForCondition(() -> delayed.get() != null);
+            assertThat(comment).hasValue("");
+            page.getByLabel("Title").fill("Draft title");
+            delayed.get().fulfill(new Route.FulfillOptions().setStatus(500)
+                .setContentType("application/json").setBody("{}"));
+            var retry = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Retry refresh"));
+            assertThat(retry).isVisible();
+            page.unroute(path);
+            retry.click();
+            org.junit.jupiter.api.Assertions.assertEquals(1L, jdbc.queryForObject(
+                "select count(*) from task_comment where task_id=?", Long.class, task));
             assertThat(page.getByText("A separate comment")).isVisible();
             assertThat(page.getByLabel("Title")).hasValue("Draft title");
             assertThat(heading(page, "Original title")).isVisible();
