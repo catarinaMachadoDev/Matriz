@@ -198,6 +198,35 @@ class TaskBrowserTest {
         }
     }
 
+    @Test
+    void unicodeTitleLimitsAndFieldErrorsWorkInTheBrowser() {
+        UUID project = seedProject("Validation project " + UUID.randomUUID());
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch()) {
+            Page page = browser.newPage();
+            signIn(page);
+            page.evaluate("hash => location.hash = hash", "#/projects/" + project);
+            var title = page.getByLabel("Title");
+            var create = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create task"));
+            title.fill("   ");
+            page.getByLabel("Description *").fill("Valid description");
+            create.click();
+            assertThat(title).hasAttribute("aria-invalid", "true");
+            assertThat(title).hasAttribute("aria-describedby", "title-error");
+            assertThat(page.locator("#title-error")).containsText("120 characters");
+            String boundary = "x".repeat(119) + "\uD83D\uDE42";
+            title.fill(boundary + "x");
+            assertThat(page.locator("#title-error")).hasCount(0);
+            create.click();
+            assertThat(page.locator("#title-error")).isVisible();
+            title.fill(boundary);
+            create.click();
+            assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(boundary))).isVisible();
+        } finally {
+            jdbc.update("delete from project where id=?", project);
+        }
+    }
+
     private static void search(Page page, String name) {
         page.getByLabel("Find a project").fill(name);
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Search").setExact(true)).click();

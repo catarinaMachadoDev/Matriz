@@ -15,7 +15,7 @@ class DataValidationTest {
     @ParameterizedTest
     @CsvSource({"name,100", "title,120", "description,2000", "content,2000"})
     void validatesRequiredTextAfterTrimming(String field, int limit) {
-        String boundary = "x".repeat(limit);
+        String boundary = "x".repeat(limit - 1) + "\uD83D\uDE42";
         assertEquals(boundary, Data.text("  " + boundary + "\n", field, limit, true));
         assertEquals(field, assertThrows(Failure.class,
             () -> Data.text(boundary + "x", field, limit, true)).fields.keySet().iterator().next());
@@ -31,7 +31,8 @@ class DataValidationTest {
 
     @Test
     void validatesOptionalDescriptionAndRejectsNullCharacters() {
-        assertEquals("x".repeat(1000), Data.text("x".repeat(1000), "description", 1000, false));
+        String boundary = "x".repeat(999) + "\uD83D\uDE42";
+        assertEquals(boundary, Data.text(boundary, "description", 1000, false));
         assertEquals(400, assertThrows(Failure.class,
             () -> Data.text("x".repeat(1001), "description", 1000, false)).status);
         assertEquals(400, assertThrows(Failure.class,

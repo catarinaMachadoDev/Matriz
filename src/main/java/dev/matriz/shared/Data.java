@@ -19,7 +19,7 @@ public class Data {
   }
   throw new Failure(400,"Invalid identifier.");
  }
- public static String text(String value,String field,int max,boolean required){String v=value==null?"":value.strip();if(v.indexOf(0)>=0)throw new Failure(400,"Check the highlighted fields.",Map.of(field,"Must not contain a NUL character."));if(v.length()>max||(required&&v.isBlank()))throw new Failure(400,"Check the highlighted fields.",Map.of(field,"Must contain "+(required?"1":"0")+"–"+max+" characters."));return v;}
+ public static String text(String value,String field,int max,boolean required){String v=value==null?"":value.strip();if(v.indexOf(0)>=0)throw new Failure(400,"Check the highlighted fields.",Map.of(field,"Must not contain a NUL character."));if(v.codePointCount(0,v.length())>max||(required&&v.isBlank()))throw new Failure(400,"Check the highlighted fields.",Map.of(field,"Must contain "+(required?"1":"0")+"–"+max+" characters."));return v;}
  public static String choice(String value,String field,String... allowed){if(!Arrays.asList(allowed).contains(value))throw new Failure(400,"Invalid "+field+".",Map.of(field,"Choose a valid value."));return value;}
  public static void page(int limit,int offset){if(limit<1||limit>100||offset<0)throw new Failure(400,"Limit must be 1–100 and offset must be nonnegative.");}
  public static void version(Long version){if(version==null||version<0)throw new Failure(400,"A valid version is required.");}
