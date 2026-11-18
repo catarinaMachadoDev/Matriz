@@ -23,7 +23,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @AutoConfigureMockMvc @Transactional
 class MatrizIntegrationTest {
  @DynamicPropertySource static void testDatabase(DynamicPropertyRegistry r){r.add("spring.datasource.url",()->System.getenv().getOrDefault("MATRIZ_TEST_DB_URL","jdbc:postgresql://127.0.0.1:5432/matriz_test"));}
- @Autowired MockMvc mvc; @Autowired ObjectMapper json; @Autowired ProjectService projects; @Autowired TaskService tasks; @Autowired Data db;
+ @Autowired MockMvc mvc; @Autowired ObjectMapper json; @Autowired ProjectService projects; @Autowired TaskService tasks;
+ @org.springframework.test.context.bean.override.mockito.MockitoSpyBean Data db;
+ @Autowired org.springframework.transaction.PlatformTransactionManager transactions;
  UUID catarina(){return projects.user("catarina");}
  UUID project(){return (UUID)projects.create(catarina(),"Test project","Verification").get("id");}
  String base(UUID p){return "/api/projects/"+p+"/tasks";}
@@ -77,11 +79,38 @@ class MatrizIntegrationTest {
  }
  @Test @WithMockUser("catarina") void duplicateMembershipReportsConflictWithoutCreatingAnotherRow()throws Exception{
   var p=project();var sam=projects.user("sam");var path="/api/projects/"+p+"/members";
+  var candidates="/api/projects/"+p+"/eligible-users";
+  mvc.perform(get(candidates)).andExpect(status().isOk())
+      .andExpect(jsonPath("$[?(@.username == 'sam')]").isNotEmpty())
+      .andExpect(jsonPath("$[?(@.username == 'catarina')]").isEmpty());
   mvc.perform(post(path).with(csrf()).contentType("application/json").content(body(Map.of("userId",sam))))
       .andExpect(status().isNoContent());
   mvc.perform(post(path).with(csrf()).contentType("application/json").content(body(Map.of("userId",sam))))
       .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value("This user is already a project member."));
+  mvc.perform(get(candidates)).andExpect(status().isOk())
+      .andExpect(jsonPath("$[?(@.username == 'sam')]").isEmpty());
   assertEquals(1L,db.jdbc.queryForObject("select count(*) from project_member where project_id=? and user_id=?",Long.class,p,sam));
+ }
+ @Test @WithMockUser("catarina")
+ @Transactional(propagation=org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+ void projectPageRetainsOneSnapshotDuringConcurrentDeletion() throws Exception {
+  String name="Concurrent page "+UUID.randomUUID();
+  UUID id=(UUID)projects.create(catarina(),name,"Snapshot verification").get("id");
+  var separateTransaction=new org.springframework.transaction.support.TransactionTemplate(transactions);
+  separateTransaction.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+  org.mockito.Mockito.doAnswer(call -> {
+   Object rows=call.callRealMethod();
+   separateTransaction.executeWithoutResult(status -> db.jdbc.update("delete from project where id=?",id));
+   return rows;
+  }).when(db).rows(org.mockito.ArgumentMatchers.startsWith("select p.* from project p join project_member"),
+      org.mockito.ArgumentMatchers.any(Object[].class));
+  try {
+   mvc.perform(get("/api/projects").param("search",name)).andExpect(status().isOk())
+       .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].id").value(id.toString()));
+   assertEquals(0L,db.jdbc.queryForObject("select count(*) from project where id=?",Long.class,id));
+  } finally {
+   db.jdbc.update("delete from project where id=?",id);
+  }
  }
  @Test @WithMockUser("catarina") void projectAndTaskResponsesMatchTheOpenApiFields()throws Exception{
   var schemas=json.readTree(java.nio.file.Path.of("openapi.yaml").toFile()).at("/components/schemas");
