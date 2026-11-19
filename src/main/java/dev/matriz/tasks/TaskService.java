@@ -17,7 +17,7 @@ public class TaskService {
  @Transactional public Map<String,Object> update(UUID project,UUID user,UUID task,String title,String description,String status,String priority,Long version){get(project,user,task);version(version);changed(db.jdbc.update("update task set title=?,description=?,status=?,priority=?,version=version+1 where id=? and version=?",text(title,"title",120,true),text(description,"description",2000,true),choice(status,"status","todo","in_progress","done"),choice(priority,"priority","low","medium","high"),task,version));return get(project,user,task);}
  @Transactional public void delete(UUID project,UUID user,UUID task,long version){get(project,user,task);version(version);changed(db.jdbc.update("delete from task where id=? and version=?",task,version));}
  @Transactional(readOnly=true, isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
- public PageResponse<TaskResponse> list(UUID project,UUID user,String status,String priority,int limit,int offset){
+ public PageResponse<TaskResponse> list(UUID project,UUID user,String status,String priority,String assigneeId,int limit,int offset){
   projects.access(project,user);
   page(limit,offset);
   List<Object> args=new ArrayList<>();
@@ -25,6 +25,10 @@ public class TaskService {
   String where=" where project_id=?";
   if(!status.isEmpty()){where+=" and status=?";args.add(choice(status,"status","todo","in_progress","done"));}
   if(!priority.isEmpty()){where+=" and priority=?";args.add(choice(priority,"priority","low","medium","high"));}
+  if(!assigneeId.isEmpty()){
+   where+=" and exists (select 1 from task_assignee a where a.task_id=task.id and a.user_id=?)";
+   args.add(id(assigneeId));
+  }
   long count=db.jdbc.queryForObject("select count(*) from task"+where,Long.class,args.toArray());
   args.add(limit);
   args.add(offset);

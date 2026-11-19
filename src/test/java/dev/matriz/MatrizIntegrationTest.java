@@ -89,7 +89,12 @@ class MatrizIntegrationTest {
  @Test @WithMockUser("catarina") void multipleAssigneesDeduplicateAndRequireMembership()throws Exception{
   var p=project();var sam=projects.user("sam");projects.addMember(p,catarina(),sam);var t=(UUID)tasks.create(p,catarina(),"Task","Details").get("id");
   for(var u:List.of(catarina(),sam,sam))mvc.perform(post(base(p)+"/"+t+"/assignees").with(csrf()).contentType("application/json").content(body(Map.of("userId",u)))).andExpect(status().isNoContent());
-  mvc.perform(get(base(p)+"/"+t)).andExpect(jsonPath("$.assignees.length()").value(2));
+  tasks.create(p,catarina(),"Unassigned","Details");
+  mvc.perform(get(base(p)).param("assigneeId",sam.toString()))
+      .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].id").value(t.toString()))
+      .andExpect(jsonPath("$.items[0].assignees.length()").value(2));
+  mvc.perform(get(base(p)).param("assigneeId",sam.toString()).param("status","done"))
+      .andExpect(jsonPath("$.total").value(0));
   mvc.perform(post(base(p)+"/"+t+"/assignees").with(csrf()).contentType("application/json").content(body(Map.of("userId",projects.user("taylor"))))).andExpect(status().isBadRequest());
   mvc.perform(delete(base(p)+"/"+t+"/assignees/"+sam).with(csrf())).andExpect(status().isNoContent());
   mvc.perform(get(base(p)+"/"+t)).andExpect(jsonPath("$.assignees.length()").value(1));

@@ -593,6 +593,15 @@
             }
           },
           {
+            "name": "assigneeId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Only tasks assigned to this project member."
+          },
+          {
             "in": "query",
             "name": "limit",
             "schema": {

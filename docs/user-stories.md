@@ -79,4 +79,4 @@ As a project member, I want to add and read task comments so the team can follow
 
 - US-02: Search by project name. Only managers can edit or delete a project. A confirmed deletion removes dependent records.
 - US-04: A member can open, edit or delete a task. Deleting a task removes its comments and assignments.
-- US-06: A member can change priority and filter by status or priority. Project progress continues to reflect all tasks. An edit using a stale version returns a conflict.
+- US-06: A member can change priority and combine status, priority, and assigned-member filters. A task with multiple assignees matches each of them. Project progress continues to reflect all tasks. An edit using a stale version returns a conflict.

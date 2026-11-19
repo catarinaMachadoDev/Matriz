@@ -9,7 +9,7 @@ Matriz gives teams an English workspace for organizing projects and tracking tas
 | RF-03 | Managers can add eligible existing accounts to their project. Membership is unique. |
 | RF-04 | Members can create, list, view, edit, and delete tasks in their own projects. |
 | RF-05 | Members can add or remove multiple eligible task assignees. Each assignment is unique and requires project membership. |
-| RF-06 | Members can update task status and priority and filter by either field. |
+| RF-06 | Members can update task status and priority and filter by status, priority, or assigned member in the list and Kanban board. |
 | RF-07 | The dashboard shows accessible projects and counts across their tasks. |
 | RF-08 | Members can add and view task comments. The server sets each author and timestamp. |
 

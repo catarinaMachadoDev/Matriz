@@ -33,19 +33,19 @@ class TaskControllerComponentTest {
     @Test
     void listBindsDefaultsAndExplicitFilters() throws Exception {
         when(tasks.user("sam")).thenReturn(user);
-        when(tasks.list(project, user, "", "", 20, 0))
+        when(tasks.list(project, user, "", "", "", 20, 0))
             .thenReturn(new PageResponse<>(List.of(), 0, 20, 0));
-        when(tasks.list(project, user, "done", "high", 5, 10))
+        when(tasks.list(project, user, "done", "high", user.toString(), 5, 10))
             .thenReturn(new PageResponse<>(List.of(), 12, 5, 10));
 
         mvc.perform(get(base).principal(() -> "sam"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.items").isEmpty())
             .andExpect(jsonPath("$.limit").value(20)).andExpect(jsonPath("$.offset").value(0));
         mvc.perform(get(base).principal(() -> "sam")
-                .param("status", "done").param("priority", "high").param("limit", "5").param("offset", "10"))
+                .param("status", "done").param("priority", "high").param("assigneeId", user.toString()).param("limit", "5").param("offset", "10"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(12))
             .andExpect(jsonPath("$.offset").value(10));
-        verify(tasks).list(project, user, "done", "high", 5, 10);
+        verify(tasks).list(project, user, "done", "high", user.toString(), 5, 10);
     }
 
     @Test
