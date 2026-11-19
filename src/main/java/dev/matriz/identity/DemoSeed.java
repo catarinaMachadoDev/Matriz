@@ -16,7 +16,11 @@ public class DemoSeed implements ApplicationRunner {
   db.jdbc.execute("create table if not exists demo_seed_marker (id integer primary key)");
   if(db.jdbc.update("insert into demo_seed_marker values(1) on conflict do nothing")==0)return;
   UUID catarina=UUID.randomUUID(),sam=UUID.randomUUID(),taylor=UUID.randomUUID();
-  for(Object[] u:new Object[][]{{catarina,"catarina","Catarina"},{sam,"sam","Sam Lee"},{taylor,"taylor","Taylor Reed"}})db.jdbc.update("insert into app_user values(?,?,?,?)",u[0],u[1],u[2],encoder.encode("MatrizDemo!2026"));
+  int created = createDemoUser(catarina, "catarina", "Catarina")
+      + createDemoUser(sam, "sam", "Sam Lee")
+      + createDemoUser(taylor, "taylor", "Taylor Reed");
+  // Only give access to sample projects to accounts created by this run.
+  if (created != 3) return;
   UUID shared=UUID.randomUUID(),privateProject=UUID.randomUUID();
   db.jdbc.update("insert into project(id,name,description,manager_id) values(?,?,?,?)",shared,"Website launch","Coordinate the fictional website launch.",catarina);
   db.jdbc.update("insert into project_member values(?,?),(?,?)",shared,catarina,shared,sam);
@@ -24,5 +28,12 @@ public class DemoSeed implements ApplicationRunner {
   db.jdbc.update("insert into project_member values(?,?)",privateProject,taylor);
   String[] titles={"Review project scope","Draft homepage copy","Review wireframe","Prepare launch checklist"};String[] states={"done","done","in_progress","todo"};
   for(int i=0;i<titles.length;i++)db.jdbc.update("insert into task(id,project_id,title,description,status) values(?,?,?,?,?)",UUID.randomUUID(),shared,titles[i],"Complete and review this demonstration activity.",states[i]);
+ }
+
+ private int createDemoUser(UUID id, String username, String displayName) {
+  return db.jdbc.update("""
+      insert into app_user(id, username, display_name, password_hash) values (?, ?, ?, ?)
+      on conflict (username) do nothing
+      """, id, username, displayName, encoder.encode("MatrizDemo!2026"));
  }
 }

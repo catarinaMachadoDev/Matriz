@@ -26,10 +26,29 @@ class MatrizIntegrationTest {
  @Autowired MockMvc mvc; @Autowired ObjectMapper json; @Autowired ProjectService projects; @Autowired TaskService tasks;
  @org.springframework.test.context.bean.override.mockito.MockitoSpyBean Data db;
  @Autowired org.springframework.transaction.PlatformTransactionManager transactions;
+ @Autowired dev.matriz.identity.DemoSeed demoSeed;
  UUID catarina(){return projects.user("catarina");}
  UUID project(){return (UUID)projects.create(catarina(),"Test project","Verification").get("id");}
  String base(UUID p){return "/api/projects/"+p+"/tasks";}
  String body(Object v)throws Exception{return json.writeValueAsString(v);}
+
+ @Test void demoSeedPreservesExistingAccountsAndCreatesMissingAccountsOnce() {
+  UUID user = catarina();
+  String passwordHash = db.jdbc.queryForObject("select password_hash from app_user where id=?", String.class, user);
+  long projectCount = db.jdbc.queryForObject("select count(*) from project", Long.class);
+  db.jdbc.update("update app_user set username='previous-taylor' where username='taylor'");
+  db.jdbc.update("delete from demo_seed_marker where id=1");
+
+  demoSeed.run(null);
+  UUID newTaylor = projects.user("taylor");
+  demoSeed.run(null);
+
+  assertEquals(user, catarina());
+  assertEquals(passwordHash, db.jdbc.queryForObject("select password_hash from app_user where id=?", String.class, user));
+  assertEquals(newTaylor, projects.user("taylor"));
+  assertEquals(projectCount, db.jdbc.queryForObject("select count(*) from project", Long.class));
+  assertEquals(0L, db.jdbc.queryForObject("select count(*) from project_member where user_id=?", Long.class, newTaylor));
+ }
 
  @Test @WithMockUser("catarina") void mandatoryDescriptionAndWhitespaceRejected()throws Exception{
   var p=project();for(String description:List.of("","   ","x".repeat(2001)))mvc.perform(post(base(p)).with(csrf()).contentType("application/json").content(body(Map.of("title","Valid","description",description)))).andExpect(status().isBadRequest());
