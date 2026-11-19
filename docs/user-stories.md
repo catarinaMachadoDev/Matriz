@@ -33,7 +33,7 @@ As a project manager, I want to add an existing user as a member so that we can 
 
 As a member, I want to create a task within a project so that I can record work to be performed.
 
-- Given project access and a valid title of 1 to 120 characters, When I submit the task with a mandatory description of 1 to 2000 characters after trimming surrounding whitespace, Then it appears in that project as “To do” at Medium priority with no assignees.
+- Given project access and a valid title of 1 to 120 characters, When I submit the task with a mandatory description of 1 to 2000 characters after trimming surrounding whitespace, Then, with the default selections, it appears in that project as “To do” at Medium priority with no assignees.
 - Given confirmed creation, When I reload the application, Then the task remains in the list with the same data.
 - Given an empty title, whitespace only, 121 title characters, or a missing, blank, whitespace-only, or 2001-character description, When I submit it, Then no task is created and the entered fields are preserved with an error indication.
 - Given a nonexistent or inaccessible project, When I try to create a task, Then the operation is denied without creating data or revealing another project's data.
@@ -79,4 +79,4 @@ As a project member, I want to add and read task comments so the team can follow
 
 - US-02: Search by project name. Only managers can edit or delete a project. A confirmed deletion removes dependent records.
 - US-04: A member can open, edit or delete a task. Deleting a task removes its comments and assignments.
-- US-06: A member can change priority and combine status, priority, and assigned-member filters. A task with multiple assignees matches each of them. Project progress continues to reflect all tasks. An edit using a stale version returns a conflict.
+- US-06: A member can choose status and priority at creation and combine status, priority, and assigned-member filters. A task with multiple assignees matches each of them. Project progress continues to reflect all tasks. An edit using a stale version returns a conflict.

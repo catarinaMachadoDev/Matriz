@@ -53,6 +53,8 @@ class TaskBrowserTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Next")).click();
             assertThat(page.getByText("21–21 of 21")).isVisible();
 
+            page.getByLabel("Initial status").selectOption("in_progress");
+            page.getByLabel("Initial priority").selectOption("high");
             page.getByLabel("Title").fill(title);
             page.getByLabel("Description *", new Page.GetByLabelOptions().setExact(true)).fill("Created through the browser.");
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create task")).click();
@@ -63,6 +65,8 @@ class TaskBrowserTest {
             assertThat(page.locator(".task-row a").first()).hasText(title);
             page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName(title).setExact(true)).click();
             assertThat(heading(page, title)).isVisible();
+            assertThat(page.locator("select#status")).hasValue("in_progress");
+            assertThat(page.locator("select#priority")).hasValue("high");
         } finally {
             jdbc.update("delete from project where name = ?", project);
         }

@@ -70,7 +70,7 @@ class MatrizIntegrationTest {
   assertEquals(0L,db.jdbc.queryForObject("select count(*) from task where project_id=?",Long.class,p));
  }
  @Test @WithMockUser("taylor") void directCrossProjectAccessIsHidden()throws Exception{
-  var p=project();var t=(UUID)tasks.create(p,catarina(),"Private","Protected content").get("id");
+  var p=project();var t=(UUID)tasks.create(p,catarina(),"Private","Protected content",null,null).get("id");
   mvc.perform(get(base(p)+"/"+t)).andExpect(status().isNotFound());
   mvc.perform(post(base(p)).with(csrf()).contentType("application/json").content(body(Map.of("title","Intrusion","description","Denied")))).andExpect(status().isNotFound());
   mvc.perform(delete("/api/projects/"+p).param("version","0").with(csrf())).andExpect(status().isNotFound());
@@ -82,14 +82,16 @@ class MatrizIntegrationTest {
   mvc.perform(get(base(p)+"/"+id)).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("todo")).andExpect(jsonPath("$.priority").value("medium")).andExpect(jsonPath("$.assignees").isEmpty());
  }
  @Test @WithMockUser("catarina") void staleTaskEditReturnsConflict()throws Exception{
-  var p=project();var t=(UUID)tasks.create(p,catarina(),"Task","Details").get("id");var b=Map.of("title","Updated","description","Updated details","status","done","priority","high","version",0);
+  var p=project();var t=(UUID)tasks.create(p,catarina(),"Task","Details",null,null).get("id");var b=Map.of("title","Updated","description","Updated details","status","done","priority","high","version",0);
   mvc.perform(put(base(p)+"/"+t).with(csrf()).contentType("application/json").content(body(b))).andExpect(status().isOk());
   mvc.perform(put(base(p)+"/"+t).with(csrf()).contentType("application/json").content(body(b))).andExpect(status().isConflict());
  }
  @Test @WithMockUser("catarina") void multipleAssigneesDeduplicateAndRequireMembership()throws Exception{
-  var p=project();var sam=projects.user("sam");projects.addMember(p,catarina(),sam);var t=(UUID)tasks.create(p,catarina(),"Task","Details").get("id");
+  var p=project();var sam=projects.user("sam");projects.addMember(p,catarina(),sam);var t=(UUID)tasks.create(p,catarina(),"Task","Details",null,null).get("id");
   for(var u:List.of(catarina(),sam,sam))mvc.perform(post(base(p)+"/"+t+"/assignees").with(csrf()).contentType("application/json").content(body(Map.of("userId",u)))).andExpect(status().isNoContent());
-  tasks.create(p,catarina(),"Unassigned","Details");
+  mvc.perform(post(base(p)).with(csrf()).contentType("application/json")
+      .content(body(Map.of("title","Unassigned","description","Details","status","done","priority","high"))))
+      .andExpect(status().isCreated()).andExpect(jsonPath("$.status").value("done")).andExpect(jsonPath("$.priority").value("high"));
   mvc.perform(get(base(p)).param("assigneeId",sam.toString()))
       .andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.items[0].id").value(t.toString()))
       .andExpect(jsonPath("$.items[0].assignees.length()").value(2));
@@ -100,7 +102,7 @@ class MatrizIntegrationTest {
   mvc.perform(get(base(p)+"/"+t)).andExpect(jsonPath("$.assignees.length()").value(1));
  }
  @Test @WithMockUser("catarina") void commentAuthorAndCascadeDeletion()throws Exception{
-  var p=project();var t=(UUID)tasks.create(p,catarina(),"Task","Details").get("id");tasks.assign(p,catarina(),t,catarina());
+  var p=project();var t=(UUID)tasks.create(p,catarina(),"Task","Details",null,null).get("id");tasks.assign(p,catarina(),t,catarina());
   mvc.perform(post(base(p)+"/"+t+"/comments").with(csrf()).contentType("application/json").content(body(Map.of("content","Useful comment")))).andExpect(status().isCreated()).andExpect(jsonPath("$.authorId").value(catarina().toString())).andExpect(jsonPath("$.createdAt").exists());
   mvc.perform(delete("/api/projects/"+p).param("version","0").with(csrf())).andExpect(status().isNoContent());
   for(String table:List.of("task_comment","task_assignee"))assertEquals(0L,db.jdbc.queryForObject("select count(*) from "+table+" where task_id=?",Long.class,t));
@@ -111,7 +113,7 @@ class MatrizIntegrationTest {
   mvc.perform(post(base(p)).with(csrf()).contentType("application/json").content(body(Map.of("title","Member task","description","Allowed")))).andExpect(status().isCreated());
  }
  @Test @WithMockUser("catarina") void filtersAndCountsCoverAllPages()throws Exception{
-  var p=project();for(int i=0;i<3;i++){var t=(UUID)tasks.create(p,catarina(),"Task "+i,"Details").get("id");if(i<2)tasks.update(p,catarina(),t,"Task "+i,"Details","done","high",0L);}
+  var p=project();for(int i=0;i<3;i++){var t=(UUID)tasks.create(p,catarina(),"Task "+i,"Details",null,null).get("id");if(i<2)tasks.update(p,catarina(),t,"Task "+i,"Details","done","high",0L);}
   mvc.perform(get(base(p)).param("status","done").param("priority","high").param("limit","1")).andExpect(jsonPath("$.items.length()").value(1)).andExpect(jsonPath("$.total").value(2));
   mvc.perform(get("/api/projects/"+p)).andExpect(jsonPath("$.counts.total").value(3)).andExpect(jsonPath("$.counts.done").value(2)).andExpect(jsonPath("$.counts.percentage").value(66.7));
  }
@@ -153,7 +155,7 @@ class MatrizIntegrationTest {
  @Test @WithMockUser("catarina") void projectAndTaskResponsesMatchTheOpenApiFields()throws Exception{
   var schemas=json.readTree(java.nio.file.Path.of("openapi.yaml").toFile()).at("/components/schemas");
   var project=project();
-  var task=(UUID)tasks.create(project,catarina(),"Contract task","Details").get("id");
+  var task=(UUID)tasks.create(project,catarina(),"Contract task","Details",null,null).get("id");
   tasks.assign(project,catarina(),task,catarina());
   var taskPage=json.readTree(mvc.perform(get(base(project))).andExpect(status().isOk())
       .andReturn().getResponse().getContentAsString());
@@ -177,7 +179,7 @@ class MatrizIntegrationTest {
  })
  void protectedRoutesRequireMembership(String method, String suffix) throws Exception {
   UUID p=project();
-  UUID t=(UUID)tasks.create(p,catarina(),"Protected task","Details").get("id");
+  UUID t=(UUID)tasks.create(p,catarina(),"Protected task","Details",null,null).get("id");
   UUID outsider=projects.user("taylor");
   var fullPath="/api/projects/"+p+(suffix.equals("/")?"":suffix.replace("{task}",t.toString())
       .replace("{user}",outsider.toString()));
@@ -256,7 +258,7 @@ class MatrizIntegrationTest {
   UUID p=project();
   UUID member=projects.user("sam");
   projects.addMember(p,catarina(),member);
-  UUID t=(UUID)tasks.create(p,member,"Task","Details").get("id");
+  UUID t=(UUID)tasks.create(p,member,"Task","Details",null,null).get("id");
   tasks.assign(p,member,t,member);
   String path=base(p)+"/"+t;
   mvc.perform(post(path+"/comments").with(csrf()).contentType("application/json")
@@ -283,7 +285,7 @@ class MatrizIntegrationTest {
  @Test @WithMockUser("catarina")
  void rejectsInvalidOptionsAndDoesNotPersistInvalidWrites()throws Exception{
   UUID p=project();
-  UUID t=(UUID)tasks.create(p,catarina(),"Task","Details").get("id");
+  UUID t=(UUID)tasks.create(p,catarina(),"Task","Details",null,null).get("id");
   String path=base(p)+"/"+t;
   mvc.perform(get(base(p)).param("status","closed")).andExpect(status().isBadRequest())
       .andExpect(jsonPath("$.fields.status").exists());

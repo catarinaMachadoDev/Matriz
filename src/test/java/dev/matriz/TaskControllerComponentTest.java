@@ -62,7 +62,7 @@ class TaskControllerComponentTest {
     @Test
     void createReturnsThePublicResponseAndHidesInternalFields() throws Exception {
         when(tasks.user("sam")).thenReturn(user);
-        when(tasks.create(project, user, "Title", "Details")).thenReturn(Map.of(
+        when(tasks.create(project, user, "Title", "Details", null, null)).thenReturn(Map.of(
             "id", task, "projectId", project, "title", "Title", "description", "Details",
             "status", "todo", "priority", "medium", "version", 0L, "assignees", List.of(),
             "createdAt", "internal"));
@@ -77,7 +77,7 @@ class TaskControllerComponentTest {
     @Test
     void adviceMapsDomainValidationAndConflict() throws Exception {
         when(tasks.user("sam")).thenReturn(user);
-        when(tasks.create(project, user, "Title", null)).thenThrow(
+        when(tasks.create(project, user, "Title", null, null, null)).thenThrow(
             new ApiError.Failure(400, "Check the highlighted fields.", Map.of("description", "Required")));
         doThrow(new ApiError.Failure(409, "This record was changed by someone else."))
             .when(tasks).delete(project, user, task, 0);

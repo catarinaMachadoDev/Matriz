@@ -13,7 +13,15 @@ public class TaskService {
  public UUID user(String username){return projects.user(username);}
  public TaskService(Data db,ProjectService projects){this.db=db;this.projects=projects;}
  public Map<String,Object> get(UUID project,UUID user,UUID task){projects.access(project,user);var t=db.one("select * from task where id=? and project_id=?",task,project);t.put("assignees",db.rows("select u.id,u.username,u.display_name from app_user u join task_assignee a on a.user_id=u.id where a.task_id=? order by u.username",task));return t;}
- @Transactional public Map<String,Object> create(UUID project,UUID user,String title,String description){projects.access(project,user);var task=UUID.randomUUID();db.jdbc.update("insert into task(id,project_id,title,description) values(?,?,?,?)",task,project,text(title,"title",120,true),text(description,"description",2000,true));return get(project,user,task);}
+ @Transactional public Map<String,Object> create(UUID project,UUID user,String title,String description,String status,String priority){
+  projects.access(project,user);
+  UUID task=UUID.randomUUID();
+  db.jdbc.update("insert into task(id,project_id,title,description,status,priority) values(?,?,?,?,?,?)",
+    task,project,text(title,"title",120,true),text(description,"description",2000,true),
+    choice(status==null?"todo":status,"status","todo","in_progress","done"),
+    choice(priority==null?"medium":priority,"priority","low","medium","high"));
+  return get(project,user,task);
+ }
  @Transactional public Map<String,Object> update(UUID project,UUID user,UUID task,String title,String description,String status,String priority,Long version){get(project,user,task);version(version);changed(db.jdbc.update("update task set title=?,description=?,status=?,priority=?,version=version+1 where id=? and version=?",text(title,"title",120,true),text(description,"description",2000,true),choice(status,"status","todo","in_progress","done"),choice(priority,"priority","low","medium","high"),task,version));return get(project,user,task);}
  @Transactional public void delete(UUID project,UUID user,UUID task,long version){get(project,user,task);version(version);changed(db.jdbc.update("delete from task where id=? and version=?",task,version));}
  @Transactional(readOnly=true, isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
