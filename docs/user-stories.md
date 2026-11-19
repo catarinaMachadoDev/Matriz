@@ -13,9 +13,9 @@ As a user, I want to sign in and sign out so that I can access work under my own
 
 ## US-02 — Projects (RF-02)
 
-As an authenticated user, I want to create and view my projects so that I can organize separate areas of work.
+As a user with project creation permission, I want to create and view my projects so that I can organize separate areas of work.
 
-- Given a valid session, When I create a project with a name of 1 to 100 characters after trimming surrounding whitespace, Then the project is saved and I become its manager and a member.
+- Given a valid session and project creation permission, When I create a project with a name of 1 to 100 characters after trimming surrounding whitespace, Then the project is saved and I become its manager and a member.
 - Given projects A and B and membership only in A, When I view the list, Then I see A and do not see B.
 - Given an empty name, whitespace only, or 101 characters after normalization, When I submit it, Then I receive a validation error and no project is created.
 - Given no accessible projects, When I view the list, Then I see an explicit empty state.

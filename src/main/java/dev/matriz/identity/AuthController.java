@@ -20,6 +20,6 @@ public class AuthController {
   Authentication auth;try{auth=manager.authenticate(UsernamePasswordAuthenticationToken.unauthenticated(body.username(),body.password()));}catch(AuthenticationException e){throw new Failure(401,"Invalid username or password.");}
   req.getSession(true);req.changeSessionId();var context=SecurityContextHolder.createEmptyContext();context.setAuthentication(auth);SecurityContextHolder.setContext(context);new HttpSessionSecurityContextRepository().saveContext(context,req,res);csrf.saveToken(null,req,res);return me(auth);
  }
- @GetMapping("/me") public Map<String,Object> me(Authentication auth){return db.one("select id,username,display_name from app_user where username=?",auth.getName());}
+ @GetMapping("/me") public Map<String,Object> me(Authentication auth){return db.one("select id,username,display_name,can_create_projects from app_user where username=?",auth.getName());}
  @PostMapping("/logout") public Map<String,String> logout(HttpServletRequest req){var session=req.getSession(false);if(session!=null)session.invalidate();SecurityContextHolder.clearContext();return Map.of("message","Signed out.");}
 }

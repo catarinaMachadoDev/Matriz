@@ -323,6 +323,7 @@ class TaskBrowserTest {
             page.getByLabel("Password").fill("MatrizDemo!2026");
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
             assertThat(heading(page, "Good work starts here.")).isVisible();
+            assertThat(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create project"))).hasCount(0);
             page.evaluate("hash => location.hash = hash", "#/projects/" + project);
             page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Kanban board")).click();
             assertThat(heading(page, "To do (20)")).isVisible();

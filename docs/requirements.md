@@ -5,7 +5,7 @@ Matriz gives teams an English workspace for organizing projects and tracking tas
 | ID | Requirement |
 | --- | --- |
 | RF-01 | Sign in and out and view the authenticated account. |
-| RF-02 | Create projects as a manager, search accessible projects by name, and view project details. Managers can edit and delete their own projects. |
+| RF-02 | Create projects with account-level permission (Catarina and Taylor in the demo). Sam can view his projects but cannot create one. The creator manages the new project. All members can search and view their accessible projects. Managers can edit and delete their own projects. |
 | RF-03 | Managers can add eligible existing accounts to their project. Membership is unique. |
 | RF-04 | Members can create, list, view, edit, and delete tasks in their own projects. |
 | RF-05 | Members can add or remove multiple eligible task assignees. Each assignment is unique and requires project membership. |

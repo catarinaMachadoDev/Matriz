@@ -109,6 +109,10 @@ class MatrizIntegrationTest {
  }
  @Test @WithMockUser("sam") void memberCannotManageProjectButCanEditTasks()throws Exception{
   var p=project();projects.addMember(p,catarina(),projects.user("sam"));
+  mvc.perform(get("/api/auth/me")).andExpect(jsonPath("$.canCreateProjects").value(false));
+  mvc.perform(post("/api/projects").with(csrf()).contentType("application/json")
+      .content(body(Map.of("name","Forbidden creation","canCreateProjects",true))))
+      .andExpect(status().isForbidden());
   mvc.perform(put("/api/projects/"+p).with(csrf()).contentType("application/json").content(body(Map.of("name","Forbidden","description","","version",0)))).andExpect(status().isForbidden());
   mvc.perform(post(base(p)).with(csrf()).contentType("application/json").content(body(Map.of("title","Member task","description","Allowed")))).andExpect(status().isCreated());
  }

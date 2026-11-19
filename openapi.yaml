@@ -60,7 +60,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/User"
+                  "$ref": "#/components/schemas/AuthenticatedUser"
                 }
               }
             }
@@ -86,7 +86,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/User"
+                  "$ref": "#/components/schemas/AuthenticatedUser"
                 }
               }
             }
@@ -252,7 +252,8 @@
           "409": {
             "$ref": "#/components/responses/R409"
           }
-        }
+        },
+        "description": "Requires project creation permission on the authenticated account."
       }
     },
     "/api/projects/{projectId}": {
@@ -1572,6 +1573,24 @@
           "total",
           "limit",
           "offset"
+        ]
+      },
+      "AuthenticatedUser": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/User"
+          },
+          {
+            "type": "object",
+            "required": [
+              "canCreateProjects"
+            ],
+            "properties": {
+              "canCreateProjects": {
+                "type": "boolean"
+              }
+            }
+          }
         ]
       }
     },

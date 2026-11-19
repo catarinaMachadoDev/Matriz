@@ -13,7 +13,7 @@
 | ID | Question for the client | Provisional answer / assumption |
 | --- | --- | --- |
 | P-01 | Who can sign in and how are accounts obtained? | Internal users with provisioned accounts; mechanism and responsible party still to be defined |
-| P-02 | Who can view and manage each project? | Creator is manager; only members have access; manager adds existing accounts |
+| P-02 | Who can view and manage each project? | Account-level permission is required to create projects; the creator is manager; only members have access; manager adds existing accounts |
 | P-03 | Which fields are mandatory? | Project name 1–100, task title 1–120, and mandatory description of 1–2000 characters after trimming; trim surrounding whitespace |
 | P-04 | What is the workflow? | To do, In progress, and Done; members may select an initial status and priority (defaults To do and Medium) and perform all transitions |
 | P-05 | How many assignees can a task have? | Zero or more, each a project member and unique per task |
