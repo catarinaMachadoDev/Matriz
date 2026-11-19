@@ -301,6 +301,52 @@ class TaskBrowserTest {
         }
     }
 
+    @Test
+    void memberCanMoveTasksOnKanbanBoardAndSeeTheChangeInTheList() {
+        UUID project = seedProject("Kanban project " + UUID.randomUUID());
+        UUID sam = jdbc.queryForObject("select id from app_user where username='sam'", UUID.class);
+        jdbc.update("insert into project_member values(?,?)", project, sam);
+        jdbc.update("""
+            insert into task(id,project_id,title,description,created_at)
+            select gen_random_uuid(), ?, 'Earlier card ' || n, 'Details', current_timestamp - interval '1 day'
+            from generate_series(1,20) n
+            """, project);
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch()) {
+            Page page = browser.newPage();
+            page.navigate("http://127.0.0.1:" + port);
+            page.getByLabel("Username").fill("sam");
+            page.getByLabel("Password").fill("MatrizDemo!2026");
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
+            assertThat(heading(page, "Good work starts here.")).isVisible();
+            page.evaluate("hash => location.hash = hash", "#/projects/" + project);
+            page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Kanban board")).click();
+            assertThat(heading(page, "To do (20)")).isVisible();
+            page.getByLabel("Title").fill("Move this card");
+            page.getByLabel("Description *").fill("Keep the saved description");
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create task")).click();
+            var todo = page.getByRole(AriaRole.REGION, new Page.GetByRoleOptions().setName("To do (21)").setExact(true));
+            var card = todo.getByRole(AriaRole.ARTICLE).filter(new Locator.FilterOptions().setHasText("Move this card"));
+            assertThat(heading(page, "To do (21)")).isVisible();
+            assertThat(card).isVisible();
+            todo.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Next")).click();
+            assertThat(todo.getByText("21–21 of 21")).isVisible();
+            todo.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Previous")).click();
+            card.getByLabel("Move task to").selectOption("done");
+            card.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Move").setExact(true)).click();
+            var done = page.getByRole(AriaRole.REGION, new Page.GetByRoleOptions().setName("Done (1)").setExact(true));
+            assertThat(done.getByRole(AriaRole.LINK, new Locator.GetByRoleOptions().setName("Move this card"))).isVisible();
+            page.reload();
+            assertThat(done.getByText("Move this card", new Locator.GetByTextOptions().setExact(true))).isVisible();
+            page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("List").setExact(true)).click();
+            page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Move this card")).click();
+            assertThat(page.getByLabel("Status", new Page.GetByLabelOptions().setExact(true))).hasValue("done");
+            assertThat(page.getByLabel("Description *")).hasValue("Keep the saved description");
+        } finally {
+            jdbc.update("delete from project where id=?", project);
+        }
+    }
+
     private static void search(Page page, String name) {
         page.getByLabel("Find a project").fill(name);
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Search").setExact(true)).click();
