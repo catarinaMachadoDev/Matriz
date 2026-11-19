@@ -10,19 +10,22 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 import java.util.UUID;
+
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "MATRIZ_E2E", matches = "true")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {"matriz.demo.enabled=true", "server.servlet.session.cookie.secure=false"})
+        properties = {"matriz.demo.enabled=true", "server.servlet.session.cookie.secure=false"})
 class TaskBrowserTest {
-    @org.springframework.beans.factory.annotation.Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
-    @LocalServerPort int port;
+    @org.springframework.beans.factory.annotation.Autowired
+    org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @LocalServerPort
+    int port;
 
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", () -> System.getenv().getOrDefault(
-            "MATRIZ_TEST_DB_URL", "jdbc:postgresql://127.0.0.1:5432/matriz_test"));
+                "MATRIZ_TEST_DB_URL", "jdbc:postgresql://127.0.0.1:5432/matriz_test"));
     }
 
     @Test
@@ -43,11 +46,11 @@ class TaskBrowserTest {
 
             UUID projectId = jdbc.queryForObject("select id from project where name=?", UUID.class, project);
             jdbc.update("""
-                insert into task(id,project_id,title,description,status,created_at)
-                select gen_random_uuid(), ?, 'Earlier task ' || n, 'Details', 'done',
-                       current_timestamp - interval '1 day'
-                from generate_series(1,21) n
-                """, projectId);
+                    insert into task(id,project_id,title,description,status,created_at)
+                    select gen_random_uuid(), ?, 'Earlier task ' || n, 'Details', 'done',
+                           current_timestamp - interval '1 day'
+                    from generate_series(1,21) n
+                    """, projectId);
             page.getByLabel("Status", new Page.GetByLabelOptions().setExact(true)).selectOption("done");
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Apply filters")).click();
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Next")).click();
@@ -71,6 +74,7 @@ class TaskBrowserTest {
             jdbc.update("delete from project where name = ?", project);
         }
     }
+
     @Test
     void delayedProjectResponseCannotReplaceTheCurrentProject() {
         String alphaName = "Async Alpha " + UUID.randomUUID();
@@ -88,7 +92,7 @@ class TaskBrowserTest {
             page.evaluate("hash => location.hash = hash", "#/projects/" + beta);
             assertThat(heading(page, betaName)).isVisible();
             page.waitForResponse(response -> response.url().endsWith("/" + alpha + "/eligible-users"),
-                () -> delayed.get().fulfill(new Route.FulfillOptions().setStatus(200).setContentType("application/json").setBody("[]")));
+                    () -> delayed.get().fulfill(new Route.FulfillOptions().setStatus(200).setContentType("application/json").setBody("[]")));
             page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
             assertThat(heading(page, betaName)).isVisible();
             page.getByLabel("Title").fill("Task for Beta");
@@ -96,7 +100,7 @@ class TaskBrowserTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Create task")).click();
             assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Task for Beta").setExact(true))).isVisible();
             org.junit.jupiter.api.Assertions.assertEquals(beta, jdbc.queryForObject(
-                "select project_id from task where project_id in (?,?) and title=?", UUID.class, alpha, beta, "Task for Beta"));
+                    "select project_id from task where project_id in (?,?) and title=?", UUID.class, alpha, beta, "Task for Beta"));
         } finally {
             jdbc.update("delete from project where id in (?,?)", alpha, beta);
         }
@@ -156,13 +160,13 @@ class TaskBrowserTest {
             assertThat(comment).hasValue("");
             page.getByLabel("Title").fill("Draft title");
             delayed.get().fulfill(new Route.FulfillOptions().setStatus(500)
-                .setContentType("application/json").setBody("{}"));
+                    .setContentType("application/json").setBody("{}"));
             var retry = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Retry refresh"));
             assertThat(retry).isVisible();
             page.unroute(path);
             retry.click();
             org.junit.jupiter.api.Assertions.assertEquals(1L, jdbc.queryForObject(
-                "select count(*) from task_comment where task_id=?", Long.class, task));
+                    "select count(*) from task_comment where task_id=?", Long.class, task));
             assertThat(page.getByText("A separate comment")).isVisible();
             assertThat(page.getByLabel("Title")).hasValue("Draft title");
             assertThat(heading(page, "Original title")).isVisible();
@@ -196,7 +200,7 @@ class TaskBrowserTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign out")).click();
             assertThat(page.getByLabel("Username")).isVisible();
             org.junit.jupiter.api.Assertions.assertEquals(401,
-                page.request().get("http://127.0.0.1:" + port + "/api/auth/me").status());
+                    page.request().get("http://127.0.0.1:" + port + "/api/auth/me").status());
         } finally {
             jdbc.update("delete from project where id=?", project);
         }
@@ -238,7 +242,7 @@ class TaskBrowserTest {
         try (Playwright playwright = Playwright.create();
              Browser browser = playwright.chromium().launch()) {
             jdbc.update("insert into task(id,project_id,title,description) values(?,?,?,?)",
-                task, project, "Disposable task", "Before edit");
+                    task, project, "Disposable task", "Before edit");
             Page page = browser.newPage();
             signIn(page);
             page.evaluate("hash => location.hash = hash", "#/projects/" + project + "/tasks/" + task);
@@ -260,7 +264,7 @@ class TaskBrowserTest {
             assertThat(heading(page, "Tasks")).isVisible();
             assertThat(page.getByRole(AriaRole.LINK, new Page.GetByRoleOptions().setName("Disposable task"))).hasCount(0);
             org.junit.jupiter.api.Assertions.assertEquals(0L, jdbc.queryForObject(
-                "select count(*) from task where id=?", Long.class, task));
+                    "select count(*) from task where id=?", Long.class, task));
         } finally {
             jdbc.update("delete from project where id=?", project);
         }
@@ -299,7 +303,59 @@ class TaskBrowserTest {
             first.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Confirm deletion")).click();
             assertThat(heading(first, "Good work starts here.")).isVisible();
             org.junit.jupiter.api.Assertions.assertEquals(0L, jdbc.queryForObject(
-                "select count(*) from project where id=?", Long.class, project));
+                    "select count(*) from project where id=?", Long.class, project));
+        } finally {
+            jdbc.update("delete from project where id=?", project);
+        }
+    }
+
+    @Test
+    void memberCanSaveStatusAndPriorityInIndependentSession() {
+        UUID project = seedProject("Member editing " + UUID.randomUUID());
+        UUID sam = jdbc.queryForObject("select id from app_user where username='sam'", UUID.class);
+        UUID task = UUID.randomUUID();
+        jdbc.update("insert into project_member values(?,?)", project, sam);
+        jdbc.update("insert into task(id,project_id,title,description) values(?,?,?,?)",
+                task, project, "Member task", "Member edits");
+        try (Playwright playwright = Playwright.create();
+             Browser browser = playwright.chromium().launch();
+             BrowserContext memberContext = browser.newContext();
+             BrowserContext managerContext = browser.newContext()) {
+            Page member = memberContext.newPage();
+            member.navigate("http://127.0.0.1:" + port);
+            member.getByLabel("Username").fill("sam");
+            member.getByLabel("Password").fill("MatrizDemo!2026");
+            member.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
+            assertThat(heading(member, "Good work starts here.")).isVisible();
+            member.evaluate("hash => location.hash = hash", "#/projects/" + project + "/tasks/" + task);
+            assertThat(heading(member, "Member task")).isVisible();
+            signIn(managerContext.newPage());
+            member.getByLabel("Status", new Page.GetByLabelOptions().setExact(true)).selectOption("in_progress");
+            member.getByLabel("Priority", new Page.GetByLabelOptions().setExact(true)).selectOption("high");
+            member.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Save changes")).click();
+            assertThat(member.getByText("Task updated.", new Page.GetByTextOptions().setExact(true))).isVisible();
+            member.reload();
+            assertThat(member.getByLabel("Status", new Page.GetByLabelOptions().setExact(true))).hasValue("in_progress");
+            assertThat(member.getByLabel("Priority", new Page.GetByLabelOptions().setExact(true))).hasValue("high");
+            Page sharedTab = memberContext.newPage();
+            sharedTab.navigate("http://127.0.0.1:" + port);
+            sharedTab.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign out")).click();
+            enterCredentials(sharedTab);
+            assertThat(heading(sharedTab, "Good work starts here.")).isVisible();
+            member.getByLabel("Status", new Page.GetByLabelOptions().setExact(true)).selectOption("done");
+            member.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Save changes")).click();
+            assertThat(member.getByLabel("Username")).hasValue("sam");
+            assertThat(member.getByRole(AriaRole.ALERT)).containsText("Another tab changed");
+            org.junit.jupiter.api.Assertions.assertEquals("in_progress", jdbc.queryForObject(
+                    "select status from task where id=?", String.class, task));
+            member.getByLabel("Password").fill("MatrizDemo!2026");
+            member.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in to your workspace")).click();
+            assertThat(heading(member, "Member task")).isVisible();
+            member.getByLabel("Status", new Page.GetByLabelOptions().setExact(true)).selectOption("done");
+            member.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Save changes")).click();
+            assertThat(member.getByText("Task updated.", new Page.GetByTextOptions().setExact(true))).isVisible();
+            member.reload();
+            assertThat(member.getByLabel("Status", new Page.GetByLabelOptions().setExact(true))).hasValue("done");
         } finally {
             jdbc.update("delete from project where id=?", project);
         }
@@ -311,10 +367,10 @@ class TaskBrowserTest {
         UUID sam = jdbc.queryForObject("select id from app_user where username='sam'", UUID.class);
         jdbc.update("insert into project_member values(?,?)", project, sam);
         jdbc.update("""
-            insert into task(id,project_id,title,description,created_at)
-            select gen_random_uuid(), ?, 'Earlier card ' || n, 'Details', current_timestamp - interval '1 day'
-            from generate_series(1,20) n
-            """, project);
+                insert into task(id,project_id,title,description,created_at)
+                select gen_random_uuid(), ?, 'Earlier card ' || n, 'Details', current_timestamp - interval '1 day'
+                from generate_series(1,20) n
+                """, project);
         try (Playwright playwright = Playwright.create();
              Browser browser = playwright.chromium().launch()) {
             Page page = browser.newPage();

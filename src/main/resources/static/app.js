@@ -32,7 +32,7 @@ async function token(){
 async function renewToken(path){
   if(path!='/auth/login'&&state.user){
     const current=await api('/auth/me');
-    if(current.id!==state.user.id)throw Object.assign(Error('The signed-in account changed.'),{status:401});
+    if(current.id!==state.user.id)throw Object.assign(Error('The signed-in account changed.'),{status:401,code:'ACCOUNT_CHANGED'});
   }
   await token();
 }
@@ -40,7 +40,7 @@ async function api(path,method='GET',body,retryCsrf=true){
   const generation=sessionGeneration;
   if(method!=='GET'&&path!='/auth/login'&&state.user){
     const current=await api('/auth/me');
-    if(current.id!==state.user.id)throw Object.assign(Error('The signed-in account changed. Sign in again.'),{status:401});
+    if(current.id!==state.user.id)throw Object.assign(Error('The signed-in account changed. Sign in again.'),{status:401,code:'ACCOUNT_CHANGED'});
   }
   if(method!=='GET'&&!state.csrf)await renewToken(path);
   ensureCurrentSession(generation);
@@ -213,7 +213,14 @@ function showFormError(target,error){
 function actionError(error,target){
   if(error.name==='AbortError')return;
   if(error.status===401){
+    const username=state.user?.username;
     endSession();
+    if(error.code==='ACCOUNT_CHANGED'){
+      document.querySelector('#username').value=username||'';
+      document.querySelector('[data-form=login] [role=alert]').textContent='Another tab changed the signed-in account. Sign in again to continue with this account. Your last action was not saved. Use a private window for a second account.';
+      document.querySelector('#password').focus();
+      return;
+    }
     notice('Your session expired. Sign in again.');
     return;
   }

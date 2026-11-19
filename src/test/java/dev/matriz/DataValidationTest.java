@@ -2,7 +2,9 @@ package dev.matriz;
 
 import dev.matriz.shared.ApiError.Failure;
 import dev.matriz.shared.Data;
+
 import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -18,7 +20,7 @@ class DataValidationTest {
         String boundary = "x".repeat(limit - 1) + "\uD83D\uDE42";
         assertEquals(boundary, Data.text("  " + boundary + "\n", field, limit, true));
         assertEquals(field, assertThrows(Failure.class,
-            () -> Data.text(boundary + "x", field, limit, true)).fields.keySet().iterator().next());
+                () -> Data.text(boundary + "x", field, limit, true)).fields.keySet().iterator().next());
     }
 
     @ParameterizedTest
@@ -34,9 +36,9 @@ class DataValidationTest {
         String boundary = "x".repeat(999) + "\uD83D\uDE42";
         assertEquals(boundary, Data.text(boundary, "description", 1000, false));
         assertEquals(400, assertThrows(Failure.class,
-            () -> Data.text("x".repeat(1001), "description", 1000, false)).status);
+                () -> Data.text("x".repeat(1001), "description", 1000, false)).status);
         assertEquals(400, assertThrows(Failure.class,
-            () -> Data.text("A\0B", "title", 120, true)).status);
+                () -> Data.text("A\0B", "title", 120, true)).status);
     }
 
     @ParameterizedTest
@@ -76,7 +78,7 @@ class DataValidationTest {
     @ValueSource(strings = {"DONE", "done ", "closed"})
     void rejectsInvalidStatus(String value) {
         var error = assertThrows(Failure.class,
-            () -> Data.choice(value, "status", "todo", "in_progress", "done"));
+                () -> Data.choice(value, "status", "todo", "in_progress", "done"));
         assertEquals(400, error.status);
         assertTrue(error.fields.containsKey("status"));
     }
