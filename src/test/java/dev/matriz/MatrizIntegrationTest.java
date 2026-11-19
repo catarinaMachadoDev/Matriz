@@ -32,6 +32,20 @@ class MatrizIntegrationTest {
  String base(UUID p){return "/api/projects/"+p+"/tasks";}
  String body(Object v)throws Exception{return json.writeValueAsString(v);}
 
+ @Test void previewRecoveryResetsOnlyCatarinaAndRunsOnce() {
+  var encoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+  UUID originalId = catarina();
+  String samHash = db.jdbc.queryForObject("select password_hash from app_user where username='sam'", String.class);
+  db.jdbc.update("delete from demo_seed_marker where id=2");
+  new dev.matriz.identity.PreviewDemoRecovery(db, encoder, "TemporaryTest!2026").run(null);
+  new dev.matriz.identity.PreviewDemoRecovery(db, encoder, "DifferentTest!2026").run(null);
+
+  assertEquals(originalId, catarina());
+  String actual = db.jdbc.queryForObject("select password_hash from app_user where id=?", String.class, originalId);
+  assertTrue(encoder.matches("TemporaryTest!2026", actual));
+  assertEquals(samHash, db.jdbc.queryForObject("select password_hash from app_user where username='sam'", String.class));
+ }
+
  @Test void demoSeedPreservesExistingAccountsAndCreatesMissingAccountsOnce() {
   UUID user = catarina();
   String passwordHash = db.jdbc.queryForObject("select password_hash from app_user where id=?", String.class, user);
